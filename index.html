@@ -1,20 +1,18 @@
 <!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<lang="pl">
-<title>Grafik</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
-<meta name="apple-mobile-web-app-title" content="Grafik">
-
-<link rel="apple-touch-icon" href="icon192.png">
-<link rel="icon" type="image/png" href="icon192.png">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#121212">
+<html lang="pl"> <head>
+    <meta charset="UTF-8">
+    <title>Grafik</title>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0f172a"> <link rel="manifest" href="manifest.json">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Grafik-wife">
+    <link rel="apple-touch-icon" href="icon192.png"> <link rel="icon" type="image/png" href="icon192.png">
+    
 <style>
 /* 1. KONFIGURACJA I ZMIENNE (Single Source of Truth) */
 :root {
@@ -1209,12 +1207,18 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js')
-                .then(reg => console.log('Pracownik (SW) zarejestrowany!'))
-                .catch(err => console.log('Błąd SW:', err));
-        });
- }
+    window.addEventListener('load', () => {
+        // Usunięcie kropki sprawia, że ścieżka jest relatywna do lokalizacji index.html
+        navigator.serviceWorker.register('sw.js') 
+            .then(reg => {
+                // Dodaj powiadomienie o aktualizacji (opcjonalnie)
+                reg.onupdatefound = () => {
+                    console.log('Znaleziono nową wersję grafika! Odśwież, aby zaktualizować.');
+                };
+            })
+            .catch(err => console.error('Błąd SW:', err));
+    });
+}
 </script>
 </head>
 <body>
