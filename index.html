@@ -995,7 +995,7 @@ class App {
 
 		// 5. Statystyki
 		const wzs = this.#calculateWZS(year, month) - offDaysSystem;
-		const nightHours = nightShifts * 8;
+		const nightHours = (brigade === 'B')? nightShifts * 7: nightShifts *8;
 
 		html += `
 			<div class="monthStats">
