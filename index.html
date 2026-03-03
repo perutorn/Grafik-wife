@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<lang="pl">
+<title>Grafik</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<meta name="apple-mobile-web-app-title" content="Grafik">
+
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="manifest" href="manifest.json">
+<style>
+/* 1. KONFIGURACJA I ZMIENNE (Single Source of Truth) */
+:root {
+    /* Kolory Zmian */
+    --color-shift1: #2ecc71;
+    --color-shift2: #f39c12;
+    --color-shift3: #3498db;
+    --color-off: #edf2f7;
+    --color-holiday: #e74c3c;
+    --color-empty: rgba(203, 213, 224, 0.1);
+    
+    /* System Kolorów UI - Jasny */
+    --bg-page: #f8fafc;
+    --bg-datebar: #ffffff;
+    --bg-button: #ffffff;
+    --text-main: #2d3748;
+    --text-on-dark: #ffffff;
+    --border-color: #cbd5e0;
+    
+    /* Geometria */
+    --radius-main: 12px;
+    --radius-day: 6px;
+    --touch-target: 48px;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg-page: #0f172a;
+        --bg-datebar: #1e293b;
+        --bg-button: #1e293b;
+        --text-main: #f1f5f9;
+        --border-color: #334155;
+        --color-off: #2d3748;
+    }
+}
+
+/* 2. RESET I BAZA */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none; /* iOS Safari */
+    user-select: none;         /* Standard */
+    -webkit-touch-callout: none; /* Blokuje menu przy długim dotknięciu na iOS */
+}
+
+/* body {
+    background-color: var(--bg-page);
+    color: var(--text-main);
+    font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow: hidden;
+    line-height: 1.4
+    overscroll-behavior-y: contain;
+} */
+
+body {
+    background-color: var(--bg-page);
+    color: var(--text-main);
+    font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow: hidden;
+    line-height: 1.4; /* Dodano średnik */
+    overscroll-behavior-y: contain; /* 'none' jest bardziej restrykcyjne i pewniejsze dla body */
+}
+
+/* 3. LAYOUT GŁÓWNY */
+.grafik_wrapper {
+    width: 96vw;
+    max-width: 600px;
+    max-height: 96vh;
+    margin: 2vh auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* 4. NAGŁÓWEK */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+#dateBar {
+    flex-grow: 1;
+    height: var(--touch-target);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--bg-datebar);
+    color: var(--text-main);
+    font-size: 1.1rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-radius: var(--radius-main);
+}
+
+.button {
+    cursor: pointer;
+    min-height: var(--touch-target);
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-button);
+    color: var(--text-main);
+    font-weight: 700;
+    font-size: 1rem;
+    border-radius: var(--radius-main);
+    transition: all 0.2s ease;
+}
+
+.button.active {
+    background-color: var(--text-main);
+    color: var(--bg-page);
+    border-color: var(--text-main);
+}
+
+/* 5. KALENDARZ - WIDOK MIESIĄCA */
+.grafik {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-template-rows: auto repeat(7, 1fr);
+    gap: 4px;
+    background-color: var(--border-color);
+    padding: 4px;
+    flex-grow: 1;
+    border-radius: var(--radius-main);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s linear;
+    will-change: transform, opacity;
+}
+
+.monthStats {
+	grid-column:span 7;
+	display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--bg-datebar);
+    color: var(--text-main);
+    padding: 10px 16px;
+    margin: 4px 0;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    width: 100%; 
+    height: 5vh;
+    /*box-sizing: border-box; /* Żeby padding nie rozpychał grida */
+}
+
+.day {
+    background-color: var(--bg-button);
+    color: var(--text-main);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.1rem;
+    font-weight: 600;
+    
+    border-radius: var(--radius-day);
+    animation: fadeInScaleMonth 0.3s ease-out;
+}
+
+
+.hour-label {
+	font-size: 0.6rem !important;
+	opacity:0.8;
+	color: var(--text-main);
+	line-height: 1;
+	margin-top: 2px;
+}
+
+.todayClass {
+	outline: 2px solid black;      /* Jasna ramka */
+    outline-offset: -3px;
+    box-shadow: 0 0 0 1px white;   /* Ciemna obwódka wokół jasnej ramki */
+}
+
+.day-name {
+    background-color: #1e293b !important; /* Stały ciemny kolor dla nagłówków dni */
+    color: #ffffff !important;
+    font-weight: 800;
+    font-size: 0.8rem;
+    height: 36px;
+    text-transform: uppercase;
+}
+
+/* 6. WIDOK ROKU - SPECYFIKACJA */
+/* Gdy kontener .grafik posiada klasę .year-grid (nadawaną w JS) */
+.year-grid {
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: none;
+    grid-auto-rows: min-content;
+    overflow-y: auto;
+    background-color: transparent;
+    border: none;
+    gap: 12px;
+    
+    /* Ukrycie paska przewijania dla Chrome, Safari i nowych Edge */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+    -webkit-overflow-scrolling: touch; /* Dodaje płynność przewijania na iOS */
+}
+
+.year-grid::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+}
+
+.mini-month {
+    background: var(--bg-button);
+    padding: 6px;
+    border-radius: var(--radius-day);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    
+    animation: fadeInScaleYear 0.3s ease-out;
+}
+
+.mini-month-current {
+	border: solid 2px gold;
+}
+
+.mini-month-name {
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-align: center;
+    padding: 4px 0;
+    margin-bottom: 6px;
+    background: var(--bg-datebar);
+    color: var(--text-main);
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+
+.mini-month:active {
+    background-color: var(--border-color);
+    transform: scale(0.95);
+    transition: transform 0.1s;
+}
+
+.mini-days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-template-rows: auto repeat(6, 1fr);
+    gap: 1px;
+}
+
+.mini-day {
+    aspect-ratio: 1;
+    font-size: 0.45rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 1px;
+   
+}
+
+/* KLUCZOWE: Pasek kwartału rozciągnięty na 3 kolumny */
+.quarter-stats {
+    grid-column: 1 / span 3;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--bg-datebar);
+    color: var(--text-main);
+    padding: 10px 16px;
+    margin: 4px 0;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+/* 7. KOLORY ZMIAN */
+.shift1  { background-color: var(--color-shift1); color: var(--text-on-dark); }
+.shift2  { background-color: var(--color-shift2); color: var(--text-on-dark); }
+.shift3  { background-color: var(--color-shift3); color: var(--text-on-dark); }
+.off     { background-color: var(--color-off); }
+.holiday { background-color: var(--color-holiday); color: var(--text-on-dark); }
+.empty   { background-color: transparent; opacity: 0.1; }
+
+
+/* 8. PANEL DOLNY I LEGENDA */
+.brigadeBar {
+    display: flex;
+    gap: 12px;
+    padding: 2px 0;
+}
+
+.button  {
+	flex: 1;
+    font-size: 1.1rem;
+}
+
+
+.legendBar {
+    display: flex;
+    gap: 4px;
+    min-height: 6vh;
+ }
+
+.legendBar div {
+    flex: 1;
+    padding: 10px 2px;
+    font-size: 0.7rem;
+    border-radius: var(--radius-day);
+    text-align: center;
+    font-weight: 700;
+}
+
+/* 9. ANIMACJE ZOOM */
+.zoom-out-exit { opacity: 0; transform: scale(0.92); }
+.zoom-out-enter { opacity: 0; transform: scale(1.08); }
+.zoom-in-exit  { opacity: 0; transform: scale(1.08); }
+.zoom-in-enter { opacity: 0; transform: scale(0.92); }
+
+@keyframes fadeInScaleMonth {
+    from { 
+        opacity: 0.5; 
+        transform: scale(0.60); 
+    }
+    to { 
+        opacity: 1; 
+        transform: scale(1); 
+    }
+}
+
+@keyframes fadeInScaleYear {
+    from { 
+        opacity: 0.5; 
+        transform: scale(1.1); 
+    }
+    to { 
+        opacity: 1; 
+        transform: scale(1); 
+    }
+}
+
+
+/* 10. DOPASOWANIE MOBILNE */
+@media (max-width: 400px) {
+    .grafik_wrapper { gap: 8px; height: 92vh; margin: 4vh auto !important;}
+    .day { font-size: 0.9rem; }
+    #dateBar { font-size: 0.9rem; }
+}
+
+/* 1. Stan bazowy legendy - musi mieć te właściwości, by móc się animować */
+footer.legend {
+    overflow: hidden;
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                opacity 0.3s ease,
+                padding 0.4s ease,
+                margin 0.4s ease;
+    max-height: 500px; /* Wartość większa niż wysokość legendy */
+    opacity: 1;
+}
+
+/* 2. Nowa klasa ukrywająca - "Zwijanie" */
+.legend-collapsed {
+    max-height: 0 !important;
+    opacity: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    pointer-events: none; /* Żeby nie dało się kliknąć w "niewidzialne" przyciski */
+}
+
+/* Kontener dla matrycy miesiąca */
+.monthMatrix {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-datebar);
+    border-radius: var(--radius-main);
+    overflow: hidden;
+    height: 100%;
+}
+
+/* Wiersz nagłówka i danych */
+.matrix-row {
+    display: grid;
+    grid-template-columns: 80px repeat(4, 1fr); /* Data + 4 brygady */
+    border-bottom: 1px solid var(--border-color);
+    min-height: 38px; /* Kompaktowy widok, by zmieścić miesiąc na ekranie */
+}
+
+.matrix-row-selected {
+	outline: 3px solid white !important;
+	outline-offset: -3px !important;
+	z-index: 100 !important;
+	position: relative;
+}
+
+.matrix-row.today-row {
+    background-color: rgba(255, 255, 255, 0.1); /* Delikatne rozjaśnienie tła wiersza */
+    outline: 2px solid gold; /* Złota ramka dookoła (nie przesuwa elementów) */
+    outline-offset: -2px;    /* Schowanie ramki do środka */
+    z-index: 10;             /* Upewnienie się, że ramka jest na wierzchu */
+    position: relative;
+}
+
+/* Specyficzne dla nagłówka */
+.matrix-header {
+    background-color: #1e293b;
+    color: white;
+    font-weight: 800;
+    text-align: center;
+    align-items: center;
+    height: 40px;
+}
+
+/* Komórka z datą */
+.matrix-date {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+    background-color: var(--bg-page);
+    border-right: 1px solid var(--border-color);
+}
+
+/* Komórka zmiany (kwadrat koloru) */
+.matrix-cell {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.matrix-holidays {
+    grid-column: span 4;
+    display: flex;
+    align-items: center;       /* Centrowanie w pionie */
+    justify-content: center;    /* Centrowanie w poziomie */
+    
+    background-color: var(--color-holiday); 
+    color: var(--text-on-dark);
+    font-weight: 800;
+    font-size: 0.9rem;
+    text-align: center;        /* Na wypadek, gdyby tekst zawijał się do wielu linii */
+}
+
+
+/* Paski brygad */
+.mini-bar {
+    flex: 1;
+    height: 100%;
+    border-radius: 1px;
+}
+
+
+/* Wyróżnienie świąt */
+.holiday-border {
+    border: 1px solid var(--color-holiday) !important;
+}
+
+/* Zapewnia, że kontener zawsze wie, gdzie jest góra, nawet w Matrixie */
+#mainContainer {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* W widoku zwykłego miesiąca (siatka 7x7) blokujemy scroll, 
+   żeby swipe był stabilny */
+#mainContainer.monthView {
+    overflow: hidden;
+}
+
+.monthMatrix, .monthMatrixView {
+    overflow-y: auto !important;
+    height: 100%; /* Musi wypełniać wrapper, by mieć co przewijać */
+}
+
+/* 2. Styl zablokowanego przycisku */
+.button:disabled {
+    /* Wizualne "wygaszenie" */
+    opacity: 0.8;
+    filter: grayscale(1);
+    
+    /* Kolory - !important gwarantuje, że szarość przykryje kolory brygad/zmian */
+    background-color: var(--color-off) !important;
+    color: var(--border-color) !important;
+    border-color: var(--border-color) !important;
+    
+    /* Blokada interakcji */
+    cursor: not-allowed;
+    pointer-events: none; /* Kluczowe: ignoruje dotyk palca */
+    
+    /* Usunięcie efektów kliknięcia i cieni */
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+button svg {
+  flex: 1;
+  vertical-align: middle;
+  pointer-events: none; /* Zapobiega problemom z klikaniem bezpośrednio w ścieżki SVG */
+}
+</style>
+
+<script>
+/* 1. SILNIK LOGIKI */
+class ShiftEngine {
+    #cycles = [1,1,2,2,3,3,3,4,4,1,1,2,2,2,3,3,4,4,1,1,1,2,2,3,3,4,4,4];
+    #starts = {
+        "A": new Date(2026, 1, 23),
+        "B": new Date(2026, 1, 9),
+        "C": new Date(2026, 1, 16),
+        "D": new Date(2026, 1, 30)
+    };
+    #msPerDay = 86400000;
+
+    getShift(timestamp, brigade) {
+        const start = this.#starts[brigade].getTime();
+        const diff = Math.round((timestamp - start) / this.#msPerDay);
+        const index = ((diff % this.#cycles.length) + this.#cycles.length) % this.#cycles.length;
+        return this.#cycles[index];
+    }
+
+    getPolishHolidays(year) {
+        let holidays = [
+            {m:0, d:1, n:"Nowy Rok"}, {m:0, d:6, n:"Trzech Króli"}, {m:4, d:1, n:"Święto Pracy"},
+            {m:4, d:3, n:"3-go Maja"}, {m:7, d:15, n:"Wiebowzięcia NMP"},
+            {m:10, d:1, n:"Wszystkich Świętych"}, {m:10, d:11, n:"Dzień Niepodległości"},
+            {m:11, d:24, n:"Wigilia"}, {m:11, d:25, n:"Boże Narodzenie"}, {m:11, d:26, n:"Boże Narodzenie"}
+        ];
+        const e = this.#getEaster(year);
+        const easter = new Date(year, e.month, e.day);
+        const addMoving = (offset) => {
+            const d = new Date(easter);
+            let name = '';
+            d.setDate(easter.getDate() + offset);
+            switch (offset) {
+				case 0: name = "Wielkanoc"; break;
+				case 1: name = "Poniedziałek Wielkanocny"; break;
+				case 49: name = "Zesłanie Ducha Św."; break;
+				case 60: name = "Boże Ciało"; break;
+			}
+            
+            holidays.push({m: d.getMonth(), d: d.getDate(), n:name});
+        };
+        [0, 1, 49, 60].forEach(offset => addMoving(offset));
+        return holidays;
+    }
+
+    #getEaster(year) {
+        const a = year % 19, b = Math.floor(year / 100), c = year % 100;
+        const d = Math.floor(b / 4), f = Math.floor((b + 8) / 25);
+        const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+        const i = Math.floor(c / 4), k = c % 4;
+        const l = (32 + 2 * (b % 4) + 2 * i - h - k) % 7;
+        const m = Math.floor((a + 11 * h + 22 * l) / 451);
+        const p = (h + l - 7 * m + 114) % 31;
+        return { month: Math.floor((h + l - 7 * m + 114) / 31) - 1, day: p + 1 };
+    }
+}
+
+/* 3. APLIKACJA */
+class App {
+    #touchStartX = 0;
+    #touchStartY = 0;
+    #touchEndX = 0;
+    #touchEndY = 0;
+    
+    SIMPLE = 0;
+    MATRIX = 1;
+    
+    YEAR_MODE = 10;
+    MONTH_MODE = 11;
+    
+    icons = {
+	  legend: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`,
+	  home: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>`,
+	  calendar: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`,
+	  matrix: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>`
+	};
+    
+
+    constructor() {
+        this.engine = new ShiftEngine();
+        this.todayDate = new Date();
+               
+        this.ui = {
+			dateBar: document.getElementById("dateBar"),
+			container: document.getElementById("mainContainer"),
+			footer: document.getElementById("footer"),
+			legend: document.getElementById("legend_info"),
+			btnL: document.getElementById('L'),
+			btnH: document.getElementById('H'),
+			btnT: document.getElementById('T'),
+			btnA: document.getElementById('A'),
+			btnB: document.getElementById('B'),
+			btnC: document.getElementById('C'),
+			btnD: document.getElementById('D')
+		}
+		
+		this.ui.btnL.innerHTML = this.icons.legend;
+		this.ui.btnH.innerHTML = this.icons.home;
+        
+        localStorage.setItem("mode", this.MONTH_MODE);
+        localStorage.setItem("view", this.SIMPLE);
+        this.state = {
+            year: new Date().getFullYear(),
+            month: new Date().getMonth(),
+            brigade: localStorage.getItem("defaultBrigade") || 'A',
+            mode: parseInt(localStorage.getItem("mode")) || this.MONTH_MODE,
+            view: parseInt(localStorage.getItem("view")) || this.SIMPLE,
+            showLegend: localStorage.getItem("showLegend") === 'true' || false
+        };
+        
+        this.ui.btnL.innerHTML = this.icons.legend;
+		this.ui.btnH.innerHTML = this.icons.home;
+		console.log(this.state.view);
+		this.ui.btnT.innerHTML = (this.state.view === this.SIMPLE)? this.icons.matrix:this.icons.calendar;
+
+        this.holidays = this.engine.getPolishHolidays(this.state.year);
+        this.initEvents();
+        this.refresh();
+    }
+
+    
+    #haptic(type = 'light') {
+		if (!navigator.vibrate) {
+			console.log("Vibration not supported");
+			 return; // Jeśli przeglądarka nie wspiera (np. niektóre iOS)
+		}
+		
+		switch(type) {
+			case 'light': navigator.vibrate(15); break;     // Krótkie kliknięcie (przyciski)
+			case 'medium': navigator.vibrate(35); break;    // Zmiana widoku/miesiąca
+			case 'error': navigator.vibrate([50, 50, 50]); break; // Błąd (3 szybkie)
+		}
+	}
+
+    initEvents() {
+		
+		document.addEventListener('keydown', (event) => {
+			switch (event.key) {
+				case "ArrowLeft":this.#changeDate(-1); break;
+				case "ArrowRight": this.#changeDate(+1);break;
+				case "ArrowDown": this.ui.btnL.click();	break;
+				case "ArrowUp": this.ui.btnT.click(); break;
+				case 'a' || 'A': this.ui.btnA.click(); break;
+				case 'b' || 'B': this.ui.btnB.click(); break;
+				case 'c' || 'C': this.ui.btnC.click(); break;
+				case 'd' || 'D': this.ui.btnD.click(); break;
+				case " " || 'h' || 'H': this.ui.btnH.click(); break;
+				case 'r' || 'R': {
+					this.state.mode = (this.state.mode === this.MONTH_MODE)? this.YEAR_MODE:this.MONTH_MODE;
+					this.refresh();
+				}; break;
+			}
+		});
+
+        // --- KLIKNIĘCIA ---
+        ['A', 'B', 'C', 'D'].forEach(id => {
+			const btn = document.getElementById(id);
+            btn.onclick = () => {
+				this.#haptic('light');
+                this.state.brigade = id;
+                localStorage.setItem('defaultBrigade', id);
+                this.refresh();
+            };
+        });
+
+        this.ui.btnH.onclick = () => this.goHome();
+        
+        this.ui.btnL.onclick = () => {
+			this.ui.footer.classList.toggle("legend-collapsed", this.state.showLegend);
+			this.ui.btnL.classList.toggle("active", !this.ui.footer.classList.contains("legend-collapsed"));
+			this.state.showLegend = this.ui.btnL.classList.contains("active");
+        };
+
+        // --- OBSŁUGA DOTYKU (SWIPE) ---
+        const wrapper = this.ui.container;
+
+		wrapper.addEventListener('touchstart', e => {
+			this.#touchStartX = e.changedTouches[0].screenX;
+			this.#touchStartY = e.changedTouches[0].screenY;
+		}, {passive: true});
+
+		// Zmieniamy na touchmove, żeby móc zablokować odświeżanie strony w trakcie ruchu
+		wrapper.addEventListener('touchmove', e => {
+			const currentY = e.changedTouches[0].screenY;
+			const diffY = currentY - this.#touchStartY;
+
+			// Pobieramy aktualny element przewijalny (Matrix lub standardowy)
+			const scrollTarget = wrapper.querySelector('.matrix-scroll') || wrapper;
+
+			// Jeśli przesuwamy w dół na samej górze, blokujemy systemowe odświeżanie (pull-to-refresh)
+			if (diffY > 0 && scrollTarget.scrollTop <= 0) {
+				if (e.cancelable) e.preventDefault();
+			}
+		}, {passive: false});
+		
+		this.ui.container.addEventListener("click", (e) => {
+    const isYearMode = this.state.mode === this.YEAR_MODE;
+    const isMatrixView = this.state.view === this.MATRIX;
+    
+    // --- LOGIKA DLA MACIERZY ---
+    if (isMatrixView && !isYearMode) {
+        const row = e.target.closest('.matrix-row');
+        
+        // Sprawdzamy czy trafiliśmy w rząd i czy to nie nagłówek
+        if (row && !row.classList.contains('matrix-header')) {
+            // Usuwamy klasę ze wszystkich rzędów (pętla forEach)
+            this.ui.container.querySelectorAll('.matrix-row')
+                .forEach(r => r.classList.remove('matrix-row-selected'));
+            
+            // Dodajemy klasę (bez kropki!)
+            row.classList.add('matrix-row-selected');
+        }
+        return;
+    }
+        
+    // --- LOGIKA DLA WIDOKU ROKU ---
+    if (isYearMode) {
+        const miniMonth = e.target.closest('.mini-month');
+        // Sprawdzamy czy miniMonth istnieje, zanim pobierzemy dataset
+        if (miniMonth && miniMonth.dataset.m) {
+            this.goToMonth(parseInt(miniMonth.dataset.m));
+        }
+        return;
+    }
+
+    // Widok SIMPLE - na razie brak akcji
+    if (!isYearMode && !isMatrixView) return;
+});
+			
+		
+		wrapper.addEventListener('touchend', e => {
+			this.#touchEndX = e.changedTouches[0].screenX;
+			this.#touchEndY = e.changedTouches[0].screenY;
+			this.#handleSwipe();
+		}, {passive: true});
+			
+		
+		this.ui.btnT.onclick = () => {
+			this.state.view = (this.state.mode === this.MONTH_MODE && this.state.view === this.SIMPLE)? this.MATRIX:this.SIMPLE;
+			this.ui.btnT.innerHTML = (this.state.view === this.SIMPLE)? this.icons.matrix:this.icons.calendar;
+			this.ui.btnT.classList.toggle("active", this.state.view === this.MATRIX);
+			localStorage.setItem("view", this.state.view);
+			this.#haptic("medium");
+			this.refresh();
+		}
+		
+		
+    }
+
+	
+	#buttonsRefresh() {
+		const { state: s, ui: u } = this; // Destrukturyzacja dla czytelności
+		const brigades = [u.btnA, u.btnB, u.btnC, u.btnD];
+
+		// Logika warunkowa wyciągnięta przed nawias
+		const isYearMode = (s.mode === this.YEAR_MODE);
+		const isMatrix = (s.view === this.MATRIX);
+
+		// 1. Obsługa brygad (A, B, C, D)
+		// Wyłączamy je TYLKO w trybie MATRIX, gdy NIE jest to tryb roczny
+		const brigadesDisabled = isMatrix && !isYearMode;
+
+		brigades.forEach(btn => {
+			btn.disabled = brigadesDisabled;
+			// Klasa active tylko gdy przycisk jest aktywny i zgadza się z brygadą
+			btn.classList.toggle("active", !btn.disabled && btn.id === s.brigade);
+		});
+
+		// 2. Obsługa przycisku T
+		// Wyłączamy T tylko w trybie rocznym
+		u.btnT.disabled = isYearMode;
+		
+		u.btnL.classList.toggle("active", this.state.showLegend);
+	}
+
+    #changeDate(delta) {
+		const currentYear = this.state.year;
+		
+        if (this.state.mode === this.MONTH_MODE) {
+            const d = new Date(this.state.year, this.state.month + delta, 1);
+            this.state.year = d.getFullYear();
+            this.state.month = d.getMonth();
+        } else {
+            this.state.year += delta;
+        }
+        
+        // Aktualizacja świąt przy zmianie roku
+        if (currentYear !== this.state.year)
+			this.holidays = this.engine.getPolishHolidays(this.state.year);
+			
+        this.refresh();
+    }
+
+    goHome() {
+        const now = new Date();
+        const nowYear = now.getFullYear();
+        const nowMonth = now.getMonth();
+        let change = false;
+        
+        if (this.state.year !== nowYear){
+			this.state.year = nowYear;
+			this.holidays = this.engine.getPolishHolidays(nowYear)
+			change = true;
+		}
+			
+        if (this.state.month !== nowMonth) {
+			this.state.month = nowMonth;
+			change = true;
+		}
+			
+        if (this.state.mode === this.YEAR_MODE) {
+			this.state.mode = this.MONTH_MODE;
+			change = true;
+		}
+		
+        if (change) {
+			this.refresh();
+		}
+    }
+    
+    saveSettingsToLocalStorage(){
+		localStorage.setItem("view", this.state.view);
+		localStorage.setItem("mode", this.state.mode);
+		localStorage.setItem("shoLegend", this.state.showLegend);
+		localStorage.setItem("defaultBrigade", this.state.brigade);
+	}
+
+    refresh() {
+		
+		this.#buttonsRefresh();
+		this.saveSettingsToLocalStorage();
+			
+		// Czyścimy klasy i ustawiamy bazę
+		const container = this.ui.container;
+		container.className = ''; 
+
+		if (this.state.mode === this.MONTH_MODE) {
+			if (this.state.view === this.SIMPLE) {
+				container.classList.add('grafik', 'monthView');
+				this.#renderMonth();
+			} else {
+				container.classList.add('monthMatrixView');
+				this.#renderMonthMatrix();
+			}
+		} else {
+			container.classList.add('grafik', 'year-grid');
+			this.#renderYear();
+		}
+	}
+	
+	#handleSwipe() {
+		const diffX = this.#touchEndX - this.#touchStartX;
+		const diffY = this.#touchEndY - this.#touchStartY;
+		const threshold = 100;
+		const scrollTarget = this.ui.container.querySelector('.matrix-scroll') || this.ui.container;
+
+		// 1. Obsługa pozioma (Zmiana miesiąca/roku) - Priorytetowa
+		if (Math.abs(diffX) > Math.abs(diffY)) {
+			if (Math.abs(diffX) > threshold) {
+				this.#haptic("medium");
+				this.#changeDate(diffX < 0 ? 1 : -1);
+			}
+			return; 
+		}
+
+		// 2. Obsługa pionowa (Przejście Miesiąc <-> Rok)
+		if (Math.abs(diffY) > threshold) {
+			const isAtTop = scrollTarget.scrollTop <= 5;
+			const isAtBottom = scrollTarget.scrollHeight - scrollTarget.scrollTop <= scrollTarget.clientHeight + 5;
+
+			// Swipe w dół (palec idzie w dół) na samej górze -> przejdź do widoku roku
+			if (diffY > threshold && isAtTop) {
+				this.#toggleYearMonthMode();
+			} 
+			// Swipe w górę (palec idzie w górę) na samym dole -> też może przełączać
+			else if (diffY < -threshold && isAtBottom) {
+				this.#toggleYearMonthMode();
+			}
+		}
+	}
+
+// Pomocnicza metoda dla czystości kodu
+	#toggleYearMonthMode() {
+		this.#haptic("medium");
+		this.state.mode = (this.state.mode === this.MONTH_MODE) ? this.YEAR_MODE : this.MONTH_MODE;
+		this.#saveAndRefresh();
+	}
+// Pomocnicza metoda, żeby nie powtarzać kodu
+	#saveAndRefresh() {
+		localStorage.setItem("mode", this.state.mode);
+		this.refresh();
+	}
+	
+
+    #renderMonth() {
+		const { year, month, brigade } = this.state;
+		const title = new Date(year, month).toLocaleString('pl-PL', { month: 'long', year: 'numeric' });
+		const todayDate = this.todayDate.getDate();
+		const todayMonth = this.todayDate.getMonth();
+		const todayYear = this.todayDate.getFullYear();
+		
+		// 1. Nagłówki dni (Pn-Nd)
+		let html = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd']
+			.map(n => `<div class="day-name">${n}</div>`).join('');
+		
+		const firstDay = new Date(year, month, 1).getDay();
+		const daysInMonth = new Date(year, month + 1, 0).getDate();
+		const offset = (firstDay === 0) ? 6 : firstDay - 1;
+
+		// 2. Puste komórki na początku
+		for (let i = 0; i < offset; i++) {
+			html += `<div class="empty day"></div>`;
+		}
+
+		let offDaysSystem = 0;
+		let nightShifts = 0;
+		let workHours = '';
+
+		// 3. Dni miesiąca
+		for (let d = 1; d <= daysInMonth; d++) {
+			const tDate = new Date(year, month, d);
+			const isHoliday = this.holidays.some(h => h.m === month && h.d === d);
+			let shiftClass = '';
+
+			if (isHoliday) {
+				shiftClass = 'holiday';
+				offDaysSystem++;
+				workHours = '<span class="hour-label">święto</span>';
+			} else {
+				const shift = this.engine.getShift(tDate.getTime(), brigade);
+				
+				if (brigade == 'B') {
+					switch (shift) {
+						case 1: workHours = '<span class="hour-label">7-14</span>';break;
+						case 2: workHours = '<span class="hour-label">14-21</span>';break;
+						case 3: workHours = '<span class="hour-label">22-5</span>';break;
+					}
+				} else {
+					switch (shift) {
+						case 1: workHours = '<span class="hour-label">6-14</span>';break;
+						case 2: workHours = '<span class="hour-label">14-22</span>';break;
+						case 3: workHours = '<span class="hour-label">22-6</span>';break;
+					}
+				}
+
+				if (shift < 4) {
+					shiftClass = `shift${shift}`;
+					if (shift === 3) nightShifts++; 
+				} else {
+					shiftClass = 'off';
+					offDaysSystem++;
+					workHours = '<span class="hour-label">wolne</span>';
+
+				}
+			}
+			
+			html += `<div class="day ${shiftClass} ${(d === todayDate && year === todayYear && month === todayMonth)? "todayClass": ""}">
+						<strong>${d}</strong>
+						${workHours}
+				 	</div>`;
+		}
+		// 4. DOPEŁNIENIE DO 42 (Gwarantuje 6 pełnych wierszy dat)
+		// To sprawia, że pasek statystyk zawsze będzie w tym samym miejscu pionowo.
+		const currentElements = offset + daysInMonth;
+		const remaining = 42 - currentElements;
+		
+		for (let i = 0; i < remaining; i++) {
+			html += `<div class="empty day"></div>`;
+		}
+
+		// 5. Statystyki
+		const wzs = this.#calculateWZS(year, month) - offDaysSystem;
+		const nightHours = nightShifts * 8;
+
+		html += `
+			<div class="monthStats">
+				<span>WZS: <strong>${wzs > 0 ? '+' + wzs : wzs}</strong></span>
+				<span>NOCE: <strong>${nightShifts} / ${nightHours}h</strong></span>
+			</div>`;
+
+		//this.ui.render(html, title);
+		this.ui.container.innerHTML = html;
+		this.ui.dateBar.innerText = title;
+	}
+
+    #calculateWZS(year, month) {
+        let norm = 0;
+        const lastDay = new Date(year, month + 1, 0).getDate();
+        for (let d = 1; d <= lastDay; d++) {
+            const date = new Date(year, month, d);
+            const isHoliday = this.holidays.some(h => h.m === month && h.d === d);
+            if (isHoliday) norm += (date.getDay() === 6) ? 2 : 1;
+            else if (date.getDay() === 0 || date.getDay() === 6) norm++;
+        }
+        return norm;
+    }
+
+	#renderYear() {
+        const { year, brigade } = this.state;
+        const grid = this.ui.grid;
+        const todayMonth = this.todayDate.getMonth();
+        const todayYear = this.todayDate.getFullYear();
+        
+        // Czyścimy grid i ustawiamy tryb
+        //this.ui.container.classList.toggle("year-grid", this.state.mode === this.YEAR_MODE);
+        this.ui.dateBar.innerText = year;
+
+        let fullYearHtml = ''; 
+
+        // Generujemy 4 kwartały
+        for (let q = 0; q < 4; q++) {
+            let qOffDaysSystem = 0;
+            let qOffDaysNorm = 0;
+            let quarterMonthsHtml = '';
+
+            // 3 miesiące w każdym kwartale
+            for (let m = q * 3; m < (q * 3) + 3; m++) {
+                const firstDay = new Date(year, m, 1).getDay();
+                const daysInMonth = new Date(year, m + 1, 0).getDate();
+                const offset = firstDay === 0 ? 6 : firstDay - 1;
+                
+                let daysHtml = '';
+
+                // Puste dni na początku miesiąca
+                for (let i = 0; i < offset; i++) {
+                    daysHtml += `<div class="empty"></div>`; 
+                }
+
+                // Dni miesiąca
+                for (let d = 1; d <= daysInMonth; d++) {
+                    const tDate = new Date(year, m, d);
+                    const isHoliday = this.holidays.some(h => h.m === m && h.d === d);
+                    const dayOfWeek = tDate.getDay();
+                    let shiftClass = '';
+
+                    if (isHoliday) {
+                        shiftClass = 'holiday';
+                        qOffDaysSystem++;
+                        qOffDaysNorm += (dayOfWeek === 6) ? 2 : 1;
+                    } else {
+                        // Używamy metody z silnika wewnątrz klasy App
+                        const shift = this.engine.getShift(tDate.getTime(), brigade);
+                        if (shift < 4) {
+                            shiftClass = `shift${shift}`;
+                        } else {
+                            shiftClass = 'off';
+                            qOffDaysSystem++;
+                        }
+                        if (dayOfWeek === 0 || dayOfWeek === 6) qOffDaysNorm++;
+                    }
+                    daysHtml += `<div class="mini-day ${shiftClass}">${d}</div>`;
+                }
+
+                const monthName = new Date(year, m).toLocaleString('pl', { month: 'short' });
+                const currentMonth = (this.state.year === todayYear && m === todayMonth) ? 'mini-month-current' : '';
+                quarterMonthsHtml += `
+                    <div class="mini-month ${currentMonth}"  data-m="${m}">
+                        <div class="mini-month-name">${monthName}</div>
+                        <div class="mini-days-grid">${daysHtml}</div>
+                    </div>`;
+            }
+
+            fullYearHtml += quarterMonthsHtml;
+            fullYearHtml += `
+                <div class="quarter-stats">
+                    <span>KWARTAŁ ${q + 1}</span> 
+                    <span>WZS: <strong>${qOffDaysNorm - qOffDaysSystem}</strong></span>
+                </div>`;
+        }
+
+        this.ui.container.innerHTML = fullYearHtml;
+        this.ui.dateBar.innerText = year.toString();
+    }
+	
+	//Przejdź do widoku miesiąca po kliknięciu w kafelek w widoku roku
+    goToMonth(m) {
+        this.state.month = m;
+        this.state.mode = this.MONTH_MODE;
+        this.refresh();
+    }
+    
+   #renderMonthMatrix() {
+		const { year, month } = this.state;
+		const container = this.ui.grid; // Korzystamy z głównego kontenera
+		const title = new Date(year, month).toLocaleString('pl-PL', { month: 'long', year: 'numeric' });
+		const todayDate = this.todayDate.getDate();
+		const todayMonth = this.todayDate.getMonth();
+		const todayYear = this.todayDate.getFullYear();
+		
+		// 1. Nagłówek macierzy
+		let html = `
+		<div class="matrix-row matrix-header">
+			<div>DATA</div>
+			<div>A</div><div>B</div><div>C</div><div>D</div>
+		</div>
+		<div class="matrix-scroll" style="overflow-y: auto; flex-grow: 1;">`;
+
+		const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+		// 2. Generowanie dni
+		for (let d = 1; d <= daysInMonth; d++) {
+			const tDate = new Date(year, month, d);
+			const ts = tDate.getTime();
+			const isHoliday = this.holidays.find(h => h.m === month && h.d === d);
+			const dayOfWeek = tDate.getDay();
+			const isWeekend = dayOfWeek === 0;
+
+			// Format daty: 01-Pn
+			const dayStr = tDate.toLocaleString('pl', { weekday: 'short' }).replace('.', '');
+			const dateDisplay = `${d.toString().padStart(2, '0')}-${dayStr}`;
+			const isToday = (d === todayDate
+							&& this.state.month === todayMonth
+							&& this.state.year === todayYear)? "today-row" : "";
+
+			html += `<div class="matrix-row ${isToday}" data-ts="${ts}">
+				<div class="matrix-date ${(isWeekend || isHoliday) ? 'holiday' : ''}" 
+					 style="${(isWeekend || isHoliday) ? 'color: var(--color-holiday); opacity: 0.8' : ''}">
+					 ${dateDisplay}
+				</div>`;
+
+			if (isHoliday) {
+				html += `<div class="matrix-holidays">${isHoliday.n}</div>`;
+			} else {
+				// Pętla po brygadach
+				['A', 'B', 'C', 'D'].forEach(br => {
+					const shift = this.engine.getShift(ts, br);
+					let shiftClass = '';
+					let label = '';
+					let workHours = '';
+					
+					if (br == 'B') {
+					switch (shift) {
+						case 1: workHours = '<span class="hour-label">7-14</span>';break;
+						case 2: workHours = '<span class="hour-label">14-21</span>';break;
+						case 3: workHours = '<span class="hour-label">22-5</span>';break;
+					}
+					} else {
+						switch (shift) {
+							case 1: workHours = '<span class="hour-label">6-14</span>';break;
+							case 2: workHours = '<span class="hour-label">14-22</span>';break;
+							case 3: workHours = '<span class="hour-label">22-6</span>';break;
+						}
+					}
+
+					if (shift < 4) {
+						shiftClass = `shift${shift}`;
+						label = shift;
+					} else {
+						shiftClass = 'off';
+					}
+					html += `<div class="matrix-cell ${shiftClass}" data-date="${ts}">
+							<strong>${label}</strong>
+							${workHours}
+						</div>`;
+				});
+			}
+
+			html += `</div>`;
+		}
+		html += `</div>`;
+		
+		// 3. Renderowanie do UI
+		this.ui.container.className = 'monthMatrix';
+		this.ui.container.innerHTML = html;
+		this.ui.dateBar.innerText = title;
+		
+		if (todayMonth === this.state.month) {
+			requestAnimationFrame(() => {
+				const todayRow = this.ui.container.querySelector('.today-row');
+				if (todayRow) {
+					todayRow.scrollIntoView({ 
+						block: 'center', 
+						behavior: 'instant' // 'instant' zamiast 'smooth', żeby użytkownik nie widział "jazdy" suwaka przy ładowaniu
+					});
+				}
+			});
+		}
+	}
+}
+
+// Start
+document.addEventListener('DOMContentLoaded', () => {
+    window.app = new App();
+});
+</script>
+</head>
+<body>
+    <div class="grafik_wrapper">
+        <header class="header">
+            <div id="dateBar"></div>
+        </header>
+        
+        <div id="mainContainer" class="grafik monthView"></div>
+        
+        <div class="brigadeBar">
+			<button class="button" id="A">A</button>
+			<button class="button" id="B">B</button>
+			<button class="button" id="C">C</button>
+			<button class="button" id="D">D</button>	
+			<button class="button nav-btn" id="L">L</button>
+			<button class="button nav-btn" id="H">H</button>
+			<button class="button nav-btn" id="T">T</button>
+        </div>
+
+        <footer class="legend legend-collapsed" id="footer">
+            <div class="legendBar" id="legend_info">
+                <div class="shift1">Zm. 1</div>
+                <div class="shift2">Zm. 2</div>
+                <div class="shift3">Zm. 3</div>
+                <div class="off">Wolne</div>
+                <div class="holiday">Święto</div>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>
+
