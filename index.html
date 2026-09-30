@@ -67,6 +67,11 @@
     -webkit-touch-callout: none;
 }
 
+input, textarea {
+    user-select: text;
+    -webkit-user-select: text;
+}
+
 body {
     background-color: var(--bg-page);
     color: var(--text-main);
@@ -411,6 +416,31 @@ button svg {
 }
 #mainContainer.monthView { overflow: hidden; }
 
+
+/* WYSZUKIWANIE */
+.header { gap: 8px; }
+#dateBar { flex: 1; }
+.icon-button { width: var(--touch-target); min-width: var(--touch-target); padding: 0; flex-shrink: 0; }
+.icon-button svg { width: 22px; height: 22px; pointer-events: none; }
+#searchContainer { position: fixed; inset: 0; z-index: 900; background: var(--bg-page); display: flex; flex-direction: column; padding: 2vh 4vw; }
+#searchContainer.hidden { display: none; }
+.search-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.search-header h2 { flex: 1; font-size: 1.15rem; text-transform: uppercase; }
+.search-results { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 8px; }
+.search-card { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; margin-bottom: 8px; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-main); background: var(--bg-button); color: var(--text-main); cursor: pointer; text-align: left; }
+.search-card:active { transform: scale(0.99); }
+.search-card-date { display: flex; flex-direction: column; gap: 2px; }
+.search-card-date strong { font-size: 1rem; }
+.search-card-date span { font-size: 0.75rem; opacity: 0.75; }
+.search-card-meta { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.search-status { font-size: 0.75rem; font-weight: 800; padding: 5px 8px; border-radius: 999px; background: var(--text-main); color: var(--bg-page); }
+.search-empty { padding: 32px 12px; text-align: center; opacity: 0.7; }
+.search-filters { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 10px; scrollbar-width: none; }
+.search-filters::-webkit-scrollbar { display: none; }
+.search-filter { flex: 0 0 auto; min-width: 62px; min-height: var(--touch-target); padding: 0 12px; font-size: 0.85rem; }
+.search-filter.active { background: var(--text-main); color: var(--bg-page); border-color: var(--text-main); }
+.search-bottom { padding-top: 8px; border-top: 1px solid var(--border-color); }
+
 /* SPA - WIDOK SZCZEGÓŁÓW DNIA */
 #dayDetailsContainer {
     position: fixed;
@@ -502,6 +532,26 @@ textarea.input-field {
     font-size: 1.2rem;
 }
 
+.search-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    margin-left: 5px;
+    border-radius: 999px;
+    background: currentColor;
+    color: var(--bg-button);
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1;
+}
+.search-filter.active .search-count {
+    background: var(--bg-page);
+    color: var(--text-main);
+}
+
 .display-none { display: none !important; }
 
 @media (max-width: 400px) {
@@ -518,6 +568,7 @@ textarea.input-field {
     <div class="grafik_wrapper">
         <header class="header">
             <div id="dateBar" title="Kliknij by zmienić widok Miesiąc/Rok"></div>
+            <button class="button icon-button" id="btnSearch" type="button" title="Wyszukaj" aria-label="Wyszukaj dni"></button>
         </header>
 
         <div id="mainContainer" class="grafik monthView"></div>
@@ -536,6 +587,24 @@ textarea.input-field {
                 <button class="button" id="B">B</button>
                 <button class="button" id="C">C</button>
                 <button class="button" id="D">D</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SPA: Wyszukiwanie zapisanych dni -->
+    <div id="searchContainer" class="hidden" aria-hidden="true">
+        <div class="search-header">
+            <button class="button" id="btnBackFromSearch" type="button">← Wróć</button>
+            <h2>Wyszukaj dni</h2>
+        </div>
+        <div id="searchResults" class="search-results" aria-live="polite"></div>
+        <div class="search-bottom">
+            <div id="searchFilters" class="search-filters" role="tablist" aria-label="Kategorie dni">
+                <button class="button search-filter active" type="button" data-status="l4">L4 <span class="search-count" data-count-for="l4">0</span></button>
+                <button class="button search-filter" type="button" data-status="nieobecnosc">Nieob. <span class="search-count" data-count-for="nieobecnosc">0</span></button>
+                <button class="button search-filter" type="button" data-status="urlop">Urlop <span class="search-count" data-count-for="urlop">0</span></button>
+                <button class="button search-filter" type="button" data-status="uz">UŻ <span class="search-count" data-count-for="uz">0</span></button>
+                <button class="button search-filter" type="button" data-status="sw">SW <span class="search-count" data-count-for="sw">0</span></button>
             </div>
         </div>
     </div>
