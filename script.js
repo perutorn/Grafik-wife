@@ -109,7 +109,8 @@ class App {
     icons = {
 	  home: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>`,
 	  calendar: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`,
-	  matrix: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>`
+	  matrix: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>`,
+      search: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>`
 	};
 
     constructor() {
@@ -137,10 +138,18 @@ class App {
 			statusPicker: document.getElementById('statusPicker'),
 			inputNote: document.getElementById('dayNote'),
 			inputHours: document.getElementById('overtimeHours'),
-			groupHours: document.getElementById('overtimeGroup')
+			groupHours: document.getElementById('overtimeGroup'),
+			// Search SPA UI
+			btnSearch: document.getElementById('btnSearch'),
+			btnBackFromSearch: document.getElementById('btnBackFromSearch'),
+			searchContainer: document.getElementById('searchContainer'),
+			searchFilters: document.getElementById('searchFilters'),
+			searchFilterButtons: document.querySelectorAll('#searchFilters .search-filter'),
+			searchResults: document.getElementById('searchResults')
 		}
 
 		this.ui.btnH.innerHTML = this.icons.home;
+        this.ui.btnSearch.innerHTML = this.icons.search;
 
         this.state = {
             year: new Date().getFullYear(),
@@ -148,8 +157,14 @@ class App {
             brigade: localStorage.getItem("defaultBrigade") || 'A',
             mode: parseInt(localStorage.getItem("mode")) || this.MONTH_MODE,
             view: parseInt(localStorage.getItem("view")) || this.SIMPLE,
-            selectedDateStr: null
+            selectedDateStr: null,
+            returnToSearch: false,
+            searchStatus: 'l4'
         };
+
+        if (!['A', 'B', 'C', 'D'].includes(this.state.brigade)) this.state.brigade = 'A';
+        if (![this.SIMPLE, this.MATRIX].includes(this.state.view)) this.state.view = this.SIMPLE;
+        if (![this.MONTH_MODE, this.YEAR_MODE].includes(this.state.mode)) this.state.mode = this.MONTH_MODE;
 
 		this.ui.btnT.innerHTML = (this.state.view === this.SIMPLE)? this.icons.matrix:this.icons.calendar;
         this.holidays = this.engine.getPolishHolidays(this.state.year);
@@ -200,6 +215,27 @@ class App {
         };
 
         this.ui.btnH.onclick = () => { this.#haptic('light'); this.goHome(); };
+
+        this.ui.btnSearch.onclick = () => { this.#haptic('medium'); this.openSearch(); };
+        this.ui.btnBackFromSearch.onclick = () => { this.#haptic('light'); this.closeSearch(); };
+
+        this.ui.searchFilters.addEventListener('click', (e) => {
+            const filter = e.target.closest('.search-filter');
+            if (!filter) return;
+            const status = filter.dataset.status;
+            if (!['l4', 'nieobecnosc', 'urlop', 'uz', 'sw'].includes(status)) return;
+            this.#haptic('light');
+            this.state.searchStatus = status;
+            this.ui.searchFilterButtons.forEach(btn => btn.classList.toggle('active', btn === filter));
+            this.renderSearchResults();
+        });
+
+        this.ui.searchResults.addEventListener('click', (e) => {
+            const card = e.target.closest('.search-card');
+            if (!card || !card.dataset.date) return;
+            this.#haptic('light');
+            this.openDayDetails(card.dataset.date, true);
+        });
 
 		this.ui.btnT.onclick = () => {
 			this.state.view = (this.state.mode === this.MONTH_MODE && this.state.view === this.SIMPLE)? this.MATRIX:this.SIMPLE;
@@ -626,8 +662,10 @@ class App {
 	}
 
     // LOGIKA SPA DLA PRZYCISKÓW STATUSU
-    openDayDetails(dateStr) {
+    openDayDetails(dateStr, fromSearch = false) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return;
         this.state.selectedDateStr = dateStr;
+        this.state.returnToSearch = fromSearch;
         this.ui.spaTitle.innerText = dateStr;
 
         const data = this.userData[dateStr] || { status: 'normal', note: '', hours: 8 };
@@ -650,11 +688,67 @@ class App {
         }
 
         this.ui.spaContainer.classList.remove('hidden');
+        if (fromSearch) {
+            this.ui.searchContainer.classList.add('hidden');
+            this.ui.searchContainer.setAttribute('aria-hidden', 'true');
+        }
     }
 
     closeDayDetails() {
+        const returnToSearch = this.state.returnToSearch;
         this.state.selectedDateStr = null;
+        this.state.returnToSearch = false;
         this.ui.spaContainer.classList.add('hidden');
+        if (returnToSearch) this.openSearch();
+    }
+
+    openSearch() {
+        this.ui.spaContainer.classList.add('hidden');
+        this.ui.searchContainer.classList.remove('hidden');
+        this.ui.searchContainer.setAttribute('aria-hidden', 'false');
+        this.renderSearchResults();
+    }
+
+    closeSearch() {
+        this.ui.searchContainer.classList.add('hidden');
+        this.ui.searchContainer.setAttribute('aria-hidden', 'true');
+    }
+
+    updateSearchFilterCounts() {
+        const counts = { l4: 0, nieobecnosc: 0, urlop: 0, uz: 0, sw: 0 };
+        Object.values(this.userData).forEach(item => {
+            if (item && Object.prototype.hasOwnProperty.call(counts, item.status)) counts[item.status]++;
+        });
+        Object.entries(counts).forEach(([status, count]) => {
+            const badge = this.ui.searchFilters.querySelector(`[data-count-for="${status}"]`);
+            if (badge) badge.textContent = String(count);
+        });
+    }
+
+    renderSearchResults() {
+        this.updateSearchFilterCounts();
+        const labels = { l4: 'L4', nieobecnosc: 'Nieob.', urlop: 'Urlop', uz: 'UŻ', sw: 'SW' };
+        const status = this.state.searchStatus;
+        const entries = Object.values(this.userData)
+            .filter(item => item && item.status === status && /^\d{4}-\d{2}-\d{2}$/.test(item.date))
+            .sort((a, b) => b.date.localeCompare(a.date));
+
+        if (!entries.length) {
+            this.ui.searchResults.innerHTML = '<div class="search-empty">Brak zapisanych dni w tej kategorii.</div>';
+            return;
+        }
+
+        this.ui.searchResults.innerHTML = entries.map(item => {
+            const date = new Date(`${item.date}T12:00:00`);
+            const weekday = date.toLocaleDateString('pl-PL', { weekday: 'long' });
+            const displayDate = date.toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const hours = (status === 'sw' && Number.isFinite(Number(item.hours))) ? ` · ${Number(item.hours)}h` : '';
+            const note = item.note ? ' · notatka' : '';
+            return `<button type="button" class="search-card" data-date="${item.date}">
+                <span class="search-card-date"><strong>${displayDate}</strong><span>${weekday}${note}</span></span>
+                <span class="search-card-meta"><span class="search-status">${labels[status]}${hours}</span> →</span>
+            </button>`;
+        }).join('');
     }
 
     async saveDayDetails() {
@@ -671,16 +765,25 @@ class App {
             hours: parseInt(this.ui.inputHours.value) || 8
         };
 
-        this.userData[dateStr] = dataToSave;
+        if (!['normal', 'l4', 'urlop', 'uz', 'sw', 'nieobecnosc', 'nadgodziny'].includes(selectedStatus)) return;
+        if ((selectedStatus === 'sw' || selectedStatus === 'nadgodziny') &&
+            (!Number.isInteger(dataToSave.hours) || dataToSave.hours < 1 || dataToSave.hours > 24)) {
+            this.ui.inputHours.focus();
+            return;
+        }
 
         try {
             await this.db.save(dataToSave);
+            this.userData[dateStr] = dataToSave;
         } catch(e) {
             console.error("Błąd zapisu do IndexedDB:", e);
+            window.alert('Nie udało się zapisać zmian. Spróbuj ponownie.');
+            return;
         }
 
+        const returnToSearch = this.state.returnToSearch;
         this.closeDayDetails();
-        this.refresh();
+        if (!returnToSearch) this.refresh();
     }
 }
 
