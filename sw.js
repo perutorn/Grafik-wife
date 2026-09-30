@@ -5,7 +5,8 @@ const ASSETS = [
     './index.html',
     './manifest.json',
     './icon192.png',
-    './icon512.png'
+    './icon512.png',
+    './script.js'
 ];
 
 // 1. Instalacja
