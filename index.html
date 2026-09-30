@@ -1,41 +1,50 @@
 <!DOCTYPE html>
-<html lang="pl"> <head>
+<html lang="pl">
+<head>
     <meta charset="UTF-8">
     <title>Grafik</title>
-    
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#0f172a"> <link rel="manifest" href="manifest.json">
-    
+    <meta name="theme-color" content="#0f172a">
+    <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Grafik-wife">
-    <link rel="apple-touch-icon" href="icon192.png"> <link rel="icon" type="image/png" href="icon192.png">
-    
+    <link rel="apple-touch-icon" href="icon192.png">
+    <link rel="icon" type="image/png" href="icon192.png">
+
 <style>
-/* 1. KONFIGURACJA I ZMIENNE (Single Source of Truth) */
 :root {
-    /* Kolory Zmian */
-    --color-shift1: #2ecc71;
-    --color-shift2: #f39c12;
-    --color-shift3: #3498db;
-    --color-off: #edf2f7;
-    --color-holiday: #e74c3c;
-    --color-empty: rgba(203, 213, 224, 0.1);
-    
-    /* System Kolorów UI - Jasny */
+    /* Istniejące kolory zmian i stanów */
+      --color-shift1: #2ecc71;
+      --color-shift2: #f39c12;
+      --color-shift3: #3498db;
+      --color-off: #edf2f7;
+      --color-holiday: #e74c3c;
+
+      /* Nowy kolor dla badge notatki (prawy górny róg) */
+      --color-badge: #8e44ad;       /* Głęboki fiolet – elegancki, kojarzy się z memo/notatką */
+      --color-badge-text: #ffffff;  /* Kolor ikony/tekstu w badge'u */
+
+      /* Kolory dla 5 kategorii (pasek na dole kafelka) */
+      --color-u: #9b59b6;        /* Jasny fiolet (np. Spotkania) */
+      --color-uz: #16a085;        /* Morski / Turkus (np. Zdrowie/Sport) */
+      --color-l4: #d35400;        /* Rdzawy / Bursztynowy (np. Finanse) */
+      --color-sw: #4a69bd;        /* Stonowany niebieski (np. Zadania) */
+      --color-nad: #e84393;        /* Wyrazisty róż / Magenta (np. Prywatne) */
+      --color-n: black;
+
     --bg-page: #f8fafc;
     --bg-datebar: #ffffff;
     --bg-button: #ffffff;
     --text-main: #2d3748;
     --text-on-dark: #ffffff;
     --border-color: #cbd5e0;
-    
-    /* Geometria */
+
     --radius-main: 12px;
     --radius-day: 6px;
-    --touch-target: 48px;
+    --touch-target: 44px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -49,36 +58,24 @@
     }
 }
 
-/* 2. RESET I BAZA */
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
     -webkit-tap-highlight-color: transparent;
-    -webkit-user-select: none; /* iOS Safari */
-    user-select: none;         /* Standard */
-    -webkit-touch-callout: none; /* Blokuje menu przy długim dotknięciu na iOS */
+    user-select: none;
+    -webkit-touch-callout: none;
 }
-
-/* body {
-    background-color: var(--bg-page);
-    color: var(--text-main);
-    font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    overflow: hidden;
-    line-height: 1.4
-    overscroll-behavior-y: contain;
-} */
 
 body {
     background-color: var(--bg-page);
     color: var(--text-main);
     font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     overflow: hidden;
-    line-height: 1.4; /* Dodano średnik */
-    overscroll-behavior-y: contain; /* 'none' jest bardziej restrykcyjne i pewniejsze dla body */
+    line-height: 1.4;
+    overscroll-behavior-y: contain;
 }
 
-/* 3. LAYOUT GŁÓWNY */
 .grafik_wrapper {
     width: 96vw;
     max-width: 600px;
@@ -86,20 +83,19 @@ body {
     margin: 2vh auto;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
 }
 
-/* 4. NAGŁÓWEK */
+/* NAGŁÓWEK GÓRNY */
 .header {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
-    gap: 8px;
     flex-shrink: 0;
 }
 
 #dateBar {
-    flex-grow: 1;
+    width: 100%;
     height: var(--touch-target);
     display: flex;
     align-items: center;
@@ -111,6 +107,13 @@ body {
     text-transform: uppercase;
     letter-spacing: 1px;
     border-radius: var(--radius-main);
+    cursor: pointer;
+    transition: background-color 0.2s;
+    border: 1px solid var(--border-color);
+}
+
+#dateBar:active {
+    background-color: var(--border-color);
 }
 
 .button {
@@ -135,7 +138,23 @@ body {
     border-color: var(--text-main);
 }
 
-/* 5. KALENDARZ - WIDOK MIESIĄCA */
+.button:disabled {
+    opacity: 0.8;
+    filter: grayscale(1);
+    background-color: var(--color-off) !important;
+    color: var(--border-color) !important;
+    border-color: var(--border-color) !important;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+button svg {
+  flex: 1;
+  vertical-align: middle;
+  pointer-events: none;
+}
+
+/* WIDOK KALENDARZA */
 .grafik {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
@@ -145,12 +164,10 @@ body {
     padding: 4px;
     flex-grow: 1;
     border-radius: var(--radius-main);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s linear;
-    will-change: transform, opacity;
 }
 
 .monthStats {
-	grid-column:span 7;
+	grid-column: span 7;
 	display: flex;
     justify-content: space-between;
     align-items: center;
@@ -162,9 +179,8 @@ body {
     font-size: 0.75rem;
     font-weight: 700;
     text-transform: uppercase;
-    width: 100%; 
+    width: 100%;
     height: 5vh;
-    /*box-sizing: border-box; /* Żeby padding nie rozpychał grida */
 }
 
 .day {
@@ -176,28 +192,48 @@ body {
     align-items: center;
     font-size: 1.1rem;
     font-weight: 600;
-    
     border-radius: var(--radius-day);
-    animation: fadeInScaleMonth 0.3s ease-out;
+    position: relative;
+    cursor: pointer;
 }
 
+.badge {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 8px;
+    height: 8px;
+    background-color: var(--color-badge);
+    border-radius: 50%;
+    box-shadow: 0 0 2px rgba(0,0,0,0.3);
+}
+
+.absence-u   { background-color: var(--color-u); position: absolute; bottom: 0; left: 0; right: 0; height: 8px; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; }
+.absence-n   { background-color: var(--color-n); position: absolute; bottom: 0; left: 0; right: 0; height: 8px; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; }
+.absence-nad { background-color: var(--color-nad); position: absolute; bottom: 0; left: 0; right: 0; height: 8px; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px;}
+.absence-sw  { background-color: var(--color-sw); position: absolute; bottom: 0; left: 0; right: 0; height: 8px; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px;  }
+.absence-l4  { background-color: var(--color-l4); position: absolute; bottom: 0; left: 0; right: 0; height: 8px; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; }
+.absence-uz  { background-color: var(--color-uz); position: absolute; bottom: 0; left: 0; right: 0;height: 8px; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; }
+
+.matrix-cell { position: relative; cursor: pointer; }
+.matrix-cell .badge { top: 2px; right: 2px; width: 6px; height: 6px; }
 
 .hour-label {
 	font-size: 0.6rem !important;
-	opacity:0.8;
+	opacity: 0.8;
 	color: var(--text-main);
 	line-height: 1;
 	margin-top: 2px;
 }
 
 .todayClass {
-	outline: 2px solid black;      /* Jasna ramka */
+	outline: 2px solid black;
     outline-offset: -3px;
-    box-shadow: 0 0 0 1px white;   /* Ciemna obwódka wokół jasnej ramki */
+    box-shadow: 0 0 0 1px white;
 }
 
 .day-name {
-    background-color: #1e293b !important; /* Stały ciemny kolor dla nagłówków dni */
+    background-color: #1e293b !important;
     color: #ffffff !important;
     font-weight: 800;
     font-size: 0.8rem;
@@ -205,8 +241,7 @@ body {
     text-transform: uppercase;
 }
 
-/* 6. WIDOK ROKU - SPECYFIKACJA */
-/* Gdy kontener .grafik posiada klasę .year-grid (nadawaną w JS) */
+/* WIDOK ROKU */
 .year-grid {
     grid-template-columns: repeat(3, 1fr);
     grid-template-rows: none;
@@ -215,30 +250,17 @@ body {
     background-color: transparent;
     border: none;
     gap: 12px;
-    
-    /* Ukrycie paska przewijania dla Chrome, Safari i nowych Edge */
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE/Edge */
-    -webkit-overflow-scrolling: touch; /* Dodaje płynność przewijania na iOS */
+    scrollbar-width: none;
 }
-
-.year-grid::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Opera */
-}
+.year-grid::-webkit-scrollbar { display: none; }
 
 .mini-month {
     background: var(--bg-button);
     padding: 6px;
     border-radius: var(--radius-day);
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    
-    animation: fadeInScaleYear 0.3s ease-out;
 }
-
-.mini-month-current {
-	border: solid 2px gold;
-}
-
+.mini-month-current { border: solid 2px gold; }
 .mini-month-name {
     font-size: 0.65rem;
     font-weight: 800;
@@ -250,20 +272,12 @@ body {
     border-radius: 4px;
     text-transform: uppercase;
 }
-
-.mini-month:active {
-    background-color: var(--border-color);
-    transform: scale(0.95);
-    transition: transform 0.1s;
-}
-
 .mini-days-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     grid-template-rows: auto repeat(6, 1fr);
     gap: 1px;
 }
-
 .mini-day {
     aspect-ratio: 1;
     font-size: 0.45rem;
@@ -271,10 +285,9 @@ body {
     align-items: center;
     justify-content: center;
     border-radius: 1px;
-   
+    position: relative;
 }
 
-/* KLUCZOWE: Pasek kwartału rozciągnięty na 3 kolumny */
 .quarter-stats {
     grid-column: 1 / span 3;
     display: flex;
@@ -287,106 +300,43 @@ body {
     border-radius: 8px;
     font-size: 0.75rem;
     font-weight: 800;
-    text-transform: uppercase;
 }
 
-/* 7. KOLORY ZMIAN */
+/* KOLORY */
 .shift1  { background-color: var(--color-shift1); color: var(--text-on-dark); }
 .shift2  { background-color: var(--color-shift2); color: var(--text-on-dark); }
 .shift3  { background-color: var(--color-shift3); color: var(--text-on-dark); }
 .off     { background-color: var(--color-off); }
 .holiday { background-color: var(--color-holiday); color: var(--text-on-dark); }
 .empty   { background-color: transparent; opacity: 0.1; }
+.status-override { border: 2px solid var(--color-badge); }
 
-
-/* 8. PANEL DOLNY I LEGENDA */
-.brigadeBar {
+/* DOLNY PANEL NAWIGACJI ORAZ BRYGAD */
+.bottom-controls {
     display: flex;
-    gap: 12px;
-    padding: 2px 0;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 1;
 }
 
-.button  {
-	flex: 1;
+.nav-bar {
+    display: flex;
+    gap: 8px;
+}
+
+.nav-bar .button {
+    flex: 1;
     font-size: 1.1rem;
 }
 
-
-.legendBar {
+.brigadeBar {
     display: flex;
-    gap: 4px;
-    min-height: 6vh;
- }
-
-.legendBar div {
-    flex: 1;
-    padding: 10px 2px;
-    font-size: 0.7rem;
-    border-radius: var(--radius-day);
-    text-align: center;
-    font-weight: 700;
+    gap: 8px;
 }
+.brigadeBar .button { flex: 1; font-size: 1.1rem; }
 
-/* 9. ANIMACJE ZOOM */
-.zoom-out-exit { opacity: 0; transform: scale(0.92); }
-.zoom-out-enter { opacity: 0; transform: scale(1.08); }
-.zoom-in-exit  { opacity: 0; transform: scale(1.08); }
-.zoom-in-enter { opacity: 0; transform: scale(0.92); }
-
-@keyframes fadeInScaleMonth {
-    from { 
-        opacity: 0.5; 
-        transform: scale(0.60); 
-    }
-    to { 
-        opacity: 1; 
-        transform: scale(1); 
-    }
-}
-
-@keyframes fadeInScaleYear {
-    from { 
-        opacity: 0.5; 
-        transform: scale(1.1); 
-    }
-    to { 
-        opacity: 1; 
-        transform: scale(1); 
-    }
-}
-
-
-/* 10. DOPASOWANIE MOBILNE */
-@media (max-width: 400px) {
-    .grafik_wrapper { gap: 8px; height: 92vh; margin: 4vh auto !important;}
-    .day { font-size: 0.9rem; }
-    #dateBar { font-size: 0.9rem; }
-}
-
-/* 1. Stan bazowy legendy - musi mieć te właściwości, by móc się animować */
-footer.legend {
-    overflow: hidden;
-    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
-                opacity 0.3s ease,
-                padding 0.4s ease,
-                margin 0.4s ease;
-    max-height: 500px; /* Wartość większa niż wysokość legendy */
-    opacity: 1;
-}
-
-/* 2. Nowa klasa ukrywająca - "Zwijanie" */
-.legend-collapsed {
-    max-height: 0 !important;
-    opacity: 0 !important;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-    margin-top: 0 !important;
-    margin-bottom: 0 !important;
-    pointer-events: none; /* Żeby nie dało się kliknąć w "niewidzialne" przyciski */
-}
-
-/* Kontener dla matrycy miesiąca */
-.monthMatrix {
+/* MATRIX VIEW */
+.monthMatrix, .monthMatrixView {
     display: flex;
     flex-direction: column;
     background-color: var(--bg-datebar);
@@ -394,31 +344,25 @@ footer.legend {
     overflow: hidden;
     height: 100%;
 }
-
-/* Wiersz nagłówka i danych */
 .matrix-row {
     display: grid;
-    grid-template-columns: 80px repeat(4, 1fr); /* Data + 4 brygady */
+    grid-template-columns: 80px repeat(4, 1fr);
     border-bottom: 1px solid var(--border-color);
-    min-height: 38px; /* Kompaktowy widok, by zmieścić miesiąc na ekranie */
+    min-height: 38px;
 }
-
 .matrix-row-selected {
 	outline: 3px solid white !important;
 	outline-offset: -3px !important;
 	z-index: 100 !important;
 	position: relative;
 }
-
-.matrix-row.today-row {
-    background-color: rgba(255, 255, 255, 0.1); /* Delikatne rozjaśnienie tła wiersza */
-    outline: 2px solid gold; /* Złota ramka dookoła (nie przesuwa elementów) */
-    outline-offset: -2px;    /* Schowanie ramki do środka */
-    z-index: 10;             /* Upewnienie się, że ramka jest na wierzchu */
+.today-row {
+    background-color: rgba(255, 255, 255, 0.1);
+    outline: 2px solid gold;
+    outline-offset: -2px;
+    z-index: 10;
     position: relative;
 }
-
-/* Specyficzne dla nagłówka */
 .matrix-header {
     background-color: #1e293b;
     color: white;
@@ -427,8 +371,6 @@ footer.legend {
     align-items: center;
     height: 40px;
 }
-
-/* Komórka z datą */
 .matrix-date {
     display: flex;
     align-items: center;
@@ -438,8 +380,6 @@ footer.legend {
     background-color: var(--bg-page);
     border-right: 1px solid var(--border-color);
 }
-
-/* Komórka zmiany (kwadrat koloru) */
 .matrix-cell {
     display: flex;
     align-items: center;
@@ -449,75 +389,126 @@ footer.legend {
     font-size: 0.8rem;
     white-space: nowrap;
 }
-
 .matrix-holidays {
     grid-column: span 4;
     display: flex;
-    align-items: center;       /* Centrowanie w pionie */
-    justify-content: center;    /* Centrowanie w poziomie */
-    
-    background-color: var(--color-holiday); 
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-holiday);
     color: var(--text-on-dark);
     font-weight: 800;
     font-size: 0.9rem;
-    text-align: center;        /* Na wypadek, gdyby tekst zawijał się do wielu linii */
+}
+.matrix-scroll {
+    overflow-y: auto;
+    flex-grow: 1;
+    -webkit-overflow-scrolling: touch;
 }
 
-
-/* Paski brygad */
-.mini-bar {
-    flex: 1;
-    height: 100%;
-    border-radius: 1px;
-}
-
-
-/* Wyróżnienie świąt */
-.holiday-border {
-    border: 1px solid var(--color-holiday) !important;
-}
-
-/* Zapewnia, że kontener zawsze wie, gdzie jest góra, nawet w Matrixie */
 #mainContainer {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
 }
+#mainContainer.monthView { overflow: hidden; }
 
-/* W widoku zwykłego miesiąca (siatka 7x7) blokujemy scroll, 
-   żeby swipe był stabilny */
-#mainContainer.monthView {
-    overflow: hidden;
+/* SPA - WIDOK SZCZEGÓŁÓW DNIA */
+#dayDetailsContainer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--bg-page);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    padding: 2vh 4vw;
+    transform: translateX(0);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.monthMatrix, .monthMatrixView {
-    overflow-y: auto !important;
-    height: 100%; /* Musi wypełniać wrapper, by mieć co przewijać */
+#dayDetailsContainer.hidden {
+    transform: translateX(100%);
+    pointer-events: none;
 }
 
-/* 2. Styl zablokowanego przycisku */
-.button:disabled {
-    /* Wizualne "wygaszenie" */
-    opacity: 0.8;
-    filter: grayscale(1);
-    
-    /* Kolory - !important gwarantuje, że szarość przykryje kolory brygad/zmian */
-    background-color: var(--color-off) !important;
-    color: var(--border-color) !important;
-    border-color: var(--border-color) !important;
-    
-    /* Blokada interakcji */
-    cursor: not-allowed;
-    pointer-events: none; /* Kluczowe: ignoruje dotyk palca */
-    
-    /* Usunięcie efektów kliknięcia i cieni */
-    box-shadow: none !important;
-    transform: none !important;
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    margin-top: 10px;
 }
 
-button svg {
-  flex: 1;
-  vertical-align: middle;
-  pointer-events: none; /* Zapobiega problemom z klikaniem bezpośrednio w ścieżki SVG */
+.panel-header h3 {
+    font-size: 1.2rem;
+    text-transform: uppercase;
+}
+
+.panel-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    flex-grow: 1;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+/* SIATKA PRZYCISKÓW STATUSU (ZAMIAST SELECT) */
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.status-btn {
+    font-size: 0.85rem;
+    padding: 8px 4px;
+    text-align: center;
+    min-height: 44px;
+}
+
+.input-field {
+    padding: 12px;
+    border-radius: var(--radius-main);
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-button);
+    color: var(--text-main);
+    font-size: 1rem;
+    font-family: inherit;
+    width: 100%;
+}
+
+textarea.input-field {
+    resize: none;
+    min-height: 100px;
+}
+
+.button-primary {
+    background-color: var(--text-main);
+    color: var(--bg-page);
+    margin-top: auto;
+    margin-bottom: 20px;
+    height: 54px;
+    font-size: 1.2rem;
+}
+
+.display-none { display: none !important; }
+
+@media (max-width: 400px) {
+    .grafik_wrapper { gap: 8px; height: 92vh; margin: 4vh auto !important;}
+    .day { font-size: 0.9rem; }
+    #dateBar { font-size: 0.9rem; }
+    .status-grid { grid-template-columns: repeat(2, 1fr); }
 }
 </style>
 
@@ -526,31 +517,64 @@ button svg {
 <body>
     <div class="grafik_wrapper">
         <header class="header">
-            <div id="dateBar"></div>
+            <div id="dateBar" title="Kliknij by zmienić widok Miesiąc/Rok"></div>
         </header>
-        
+
         <div id="mainContainer" class="grafik monthView"></div>
-        
-        <div class="brigadeBar">
-			<button class="button" id="A">A</button>
-			<button class="button" id="B">B</button>
-			<button class="button" id="C">C</button>
-			<button class="button" id="D">D</button>	
-			<button class="button nav-btn" id="L">L</button>
-			<button class="button nav-btn" id="H">H</button>
-			<button class="button nav-btn" id="T">T</button>
+
+        <!-- DOLNE STEROWANIE I NAWIGACJA (STREFA KCIUKA) -->
+        <div class="bottom-controls">
+            <div class="nav-bar">
+                <button class="button nav-btn" id="btnPrev">&lt;</button>
+                <button class="button nav-btn" id="H" title="Dzisiaj"></button>
+                <button class="button nav-btn" id="T" title="Widok"></button>
+                <button class="button nav-btn" id="btnNext">&gt;</button>
+            </div>
+
+            <div class="brigadeBar">
+                <button class="button" id="A">A</button>
+                <button class="button" id="B">B</button>
+                <button class="button" id="C">C</button>
+                <button class="button" id="D">D</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SPA: Widok szczegółów/notatek dnia -->
+    <div id="dayDetailsContainer" class="hidden">
+        <div class="panel-header">
+            <button class="button" id="btnBackToCalendar">← Wróć</button>
+            <h3 id="selectedDateTitle">Data</h3>
         </div>
 
-        <footer class="legend legend-collapsed" id="footer">
-            <div class="legendBar" id="legend_info">
-                <div class="shift1">Zm. 1</div>
-                <div class="shift2">Zm. 2</div>
-                <div class="shift3">Zm. 3</div>
-                <div class="off">Wolne</div>
-                <div class="holiday">Święto</div>
+        <div class="panel-body">
+            <!-- STATUS DNIA JAKO PRZYCISKI -->
+            <div class="form-group">
+                <label>Status dnia:</label>
+                <div id="statusPicker" class="status-grid">
+                    <button type="button" class="button status-btn active" data-value="normal">Praca</button>
+                    <button type="button" class="button status-btn" data-value="l4">L4</button>
+                    <button type="button" class="button status-btn" data-value="urlop">Urlop</button>
+                    <button type="button" class="button status-btn" data-value="uz">UŻ</button>
+                    <button type="button" class="button status-btn" data-value="sw">SW</button>
+                    <button type="button" class="button status-btn" data-value="nieobecnosc">Nieob.</button>
+                    <button type="button" class="button status-btn" data-value="nadgodziny">Nadgodziny</button>
+                </div>
             </div>
-        </footer>
+
+            <!-- Godziny (tylko dla Nadgodzin i SW) -->
+            <div id="overtimeGroup" class="form-group display-none">
+                <label for="overtimeHours">Liczba godzin:</label>
+                <input type="number" id="overtimeHours" class="input-field" min="1" max="24" value="8">
+            </div>
+
+            <div class="form-group">
+                <label for="dayNote">Notatka (max 200 znaków):</label>
+                <textarea id="dayNote" class="input-field" maxlength="200" placeholder="Wpisz opcjonalną notatkę..."></textarea>
+            </div>
+
+            <button class="button button-primary" id="btnSaveDay">Zapisz</button>
+        </div>
     </div>
 </body>
 </html>
-
