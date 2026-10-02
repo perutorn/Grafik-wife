@@ -447,12 +447,12 @@ class App {
 
       let absenceIndicator = '';
             if (uData && uData.status !== 'normal') {
-              if (uData.status === 'urlop') { absenceIndicator = '<div class="absence-u"></div>'; workHours = '<span class="hour-label">Urlop</span>'; }
-              if (uData.status === 'uz') { absenceIndicator = '<div class="absence-uz"></div>'; workHours = '<span class="hour-label">Żąd.</span>'; }
-                if (uData.status === 'l4') { absenceIndicator = '<div class="absence-l4"></div>'; workHours = '<span class="hour-label">L4</span>'; }
-                if (uData.status === 'sw') {  absenceIndicator = '<div class="absence-sw"></div>'; workHours = `<span class="hour-label">SW ${uData.hours}h</span>`; }
-                if (uData.status === 'nieobecnosc') { absenceIndicator = '<div class="absence-n"></div>';; workHours = '<span class="hour-label">Nieob.</span>'; }
-                if (uData.status === 'nadgodziny') {  absenceIndicator = '<div class="absence-nad"></div>'; workHours = `<span class="hour-label">+${uData.hours}h</span>`; }
+              if (uData.status === 'urlop') { absenceIndicator = '<div class="absence-ind absence-ind-u></div>'; workHours = '<span class="hour-label">Urlop</span>'; }
+              if (uData.status === 'uz') { absenceIndicator = '<div class="absence-ind absence-ind-uz"></div>'; workHours = '<span class="hour-label">Żąd.</span>'; }
+                if (uData.status === 'l4') { absenceIndicator = '<div class="absence-ind absence-ind-l4"></div>'; workHours = '<span class="hour-label">L4</span>'; }
+                if (uData.status === 'sw') {  absenceIndicator = '<div class="absence-ind absence-ind-sw"></div>'; workHours = `<span class="hour-label">SW ${uData.hours}h</span>`; }
+                if (uData.status === 'nieobecnosc') { absenceIndicator = '<div class="absence-ind absence-ind-n"></div>';; workHours = '<span class="hour-label">Nieob.</span>'; }
+                if (uData.status === 'nadgodziny') {  absenceIndicator = '<div class="absence-ind absence-ind-nad"></div>'; workHours = `<span class="hour-label">+${uData.hours}h</span>`; }
             }
 
       const badgeHtml = (uData && uData.note) ? `<div class="badge"></div>` : '';
