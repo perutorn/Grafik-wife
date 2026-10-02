@@ -28,12 +28,16 @@
       --color-badge-text: #ffffff;  /* Kolor ikony/tekstu w badge'u */
 
       /* Kolory dla 5 kategorii (pasek na dole kafelka) */
-      --color-u: #9b59b6;        /* Jasny fiolet (np. Spotkania) */
-      --color-uz: #16a085;        /* Morski / Turkus (np. Zdrowie/Sport) */
-      --color-l4: #d35400;        /* Rdzawy / Bursztynowy (np. Finanse) */
-      --color-sw: #4a69bd;        /* Stonowany niebieski (np. Zadania) */
-      --color-nad: #e84393;        /* Wyrazisty róż / Magenta (np. Prywatne) */
+      --color-u: #00b894;        /* Jasny fiolet (np. Spotkania) */
+      --color-uz: #55efc4;       /* Morski / Turkus (np. Zdrowie/Sport) */
+      --color-l4: #e17055;       /* Rdzawy / Bursztynowy (np. Finanse) */
+      --color-sw: #0984e3;       /* Stonowany niebieski (np. Zadania) */
+      --color-nad: #6c5ce7;      /* Wyrazisty róż / Magenta (np. Prywatne) */
       --color-n: black;
+      --color-ub: #e84393;
+      --color-op188: #b2bec3;
+      --color-ob: #00cec9;
+      --color-k: #d63031;
 
     --bg-page: #f8fafc;
     --bg-datebar: #ffffff;
@@ -84,6 +88,7 @@ body {
 .grafik_wrapper {
     width: 96vw;
     max-width: 600px;
+    height: 96vh;
     max-height: 96vh;
     margin: 2vh auto;
     display: flex;
@@ -154,9 +159,28 @@ body {
 }
 
 button svg {
-  flex: 1;
+  /* SVG nie może rozciągać się razem z przyciskiem */
+  flex: 0 0 auto;
+  width: 1.35em;
+  height: 1.35em;
+  max-width: 70%;
+  max-height: 70%;
+  display: block;
   vertical-align: middle;
   pointer-events: none;
+  overflow: hidden;
+}
+
+.button {
+  overflow: hidden;
+}
+
+.icon-button svg {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  max-width: 22px;
+  max-height: 22px;
 }
 
 /* WIDOK KALENDARZA */
@@ -213,12 +237,19 @@ button svg {
     box-shadow: 0 0 2px rgba(0,0,0,0.3);
 }
 
-.absence-u   { background-color: var(--color-u); position: absolute; bottom: 0; left: 0; right: 0; height: 8px; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; }
-.absence-n   { background-color: var(--color-n); position: absolute; bottom: 0; left: 0; right: 0; height: 8px; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; }
-.absence-nad { background-color: var(--color-nad); position: absolute; bottom: 0; left: 0; right: 0; height: 8px; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px;}
-.absence-sw  { background-color: var(--color-sw); position: absolute; bottom: 0; left: 0; right: 0; height: 8px; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px;  }
-.absence-l4  { background-color: var(--color-l4); position: absolute; bottom: 0; left: 0; right: 0; height: 8px; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; }
-.absence-uz  { background-color: var(--color-uz); position: absolute; bottom: 0; left: 0; right: 0;height: 8px; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; }
+.absence-ind {position: absolute; bottom: 0; left: 0; right: 0; height: 8px; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px;}
+
+.absence-ind-u   { background-color: var(--color-u);}
+.absence-ind-n   { background-color: var(--color-n);}
+.absence-ind-nad { background-color: var(--color-nad);}
+.absence-ind-sw  { background-color: var(--color-sw);}
+.absence-ind-l4  { background-color: var(--color-l4);}
+.absence-ind-uz  { background-color: var(--color-uz);}
+.absence-ind-op188 {background-color: var(--color-op188);}
+.absence-ind-ub {background-color: var(--color-ub);}
+.absence-ind-ob {background-color: var(--color-ob);}
+.absence-ind-us {background-color: var(--color-us);}
+.absence-ind-k {background-color: var(--color-k);}
 
 .matrix-cell { position: relative; cursor: pointer; }
 .matrix-cell .badge { top: 2px; right: 2px; width: 6px; height: 6px; }
@@ -316,29 +347,75 @@ button svg {
 .empty   { background-color: transparent; opacity: 0.1; }
 .status-override { border: 2px solid var(--color-badge); }
 
-/* DOLNY PANEL NAWIGACJI ORAZ BRYGAD */
+/* DOLNY PANEL STEROWANIA ORAZ BRYGAD */
 .bottom-controls {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    flex-shrink: 1;
+    flex: 0 0 auto;
 }
 
-.nav-bar {
+/* Pierwszy rząd: nawigacja po lewej + brygady 2x2 po prawej.
+   Pojedynczy przycisk brygady ma wysokość 44px, więc cały rząd ma 96px
+   (2 x 44px + 8px odstępu). Przyciski < i > mają wysokość całego rzędu. */
+.top-control-row {
     display: flex;
     gap: 8px;
+    height: 96px;
+    flex: 0 0 96px;
+    align-items: stretch;
 }
 
-.nav-bar .button {
+.nav-group-left {
+    display: flex;
+    gap: 8px;
+    flex: 2;
+    min-width: 0;
+    height: 96px;
+}
+
+.nav-group-left .button {
     flex: 1;
+    height: 96px;
+    min-height: 96px;
+    font-size: 1.8rem;
+}
+
+.brigade-grid-right {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, 44px);
+    gap: 8px;
+    flex: 2;
+    min-width: 0;
+    height: 96px;
+}
+
+.brigade-grid-right .button {
+    width: 100%;
+    height: 44px;
+    min-height: 44px;
+    padding: 0 10px;
     font-size: 1.1rem;
 }
 
-.brigadeBar {
+/* Drugi rząd: każdy przycisk ma dokładnie wysokość pojedynczego
+   przycisku brygady. */
+.bottom-control-row {
     display: flex;
     gap: 8px;
+    align-items: stretch;
+    height: 44px;
+    flex: 0 0 44px;
 }
-.brigadeBar .button { flex: 1; font-size: 1.1rem; }
+
+.bottom-control-row .button {
+    flex: 1;
+    min-width: 0;
+    min-height: 44px;
+    height: 44px;
+    font-size: 1.1rem;
+}
 
 /* MATRIX VIEW */
 .monthMatrix, .monthMatrixView {
@@ -411,6 +488,8 @@ button svg {
 }
 
 #mainContainer {
+    min-height: 0;
+    flex: 1 1 auto;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
 }
@@ -422,8 +501,8 @@ button svg {
 #dateBar { flex: 1; }
 .icon-button { width: var(--touch-target); min-width: var(--touch-target); padding: 0; flex-shrink: 0; }
 .icon-button svg { width: 22px; height: 22px; pointer-events: none; }
-#searchContainer { position: fixed; inset: 0; z-index: 900; background: var(--bg-page); display: flex; flex-direction: column; padding: 2vh 4vw; }
-#searchContainer.hidden { display: none; }
+#searchContainer { position: fixed; inset: 0; z-index: 900; background: var(--bg-page); display: flex; flex-direction: column; padding: 2vh 4vw; transform: translateX(0); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+#searchContainer.hidden { transform: translateX(-100%); pointer-events: none; }
 .search-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
 .search-header h2 { flex: 1; font-size: 1.15rem; text-transform: uppercase; }
 .search-results { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 8px; }
@@ -507,6 +586,18 @@ button svg {
     min-height: 44px;
 }
 
+.status-btn-l4 {background-color: var(--color-l4);}
+.status-btn-u {background-color: var(--color-u);}
+.status-btn-uz {background-color: var(--color-uz);}
+.status-btn-sw {background-color: var(--color-sw);}
+.status-btn-n {background-color: var(--color-n);}
+.status-btn-nad {background-color: var(--color-nad);}
+.status-btn-op188 {background-color: var(--color-op188);}
+.status-btn-ub {background-color: var(--color-ub);}
+.status-btn-ob {background-color: var(--color-ob);}
+.status-btn-us {background-color: var(--color-us);}
+.status-btn-k {background-color: var(--color-k);}
+
 .input-field {
     padding: 12px;
     border-radius: var(--radius-main);
@@ -556,6 +647,11 @@ textarea.input-field {
 
 @media (max-width: 400px) {
     .grafik_wrapper { gap: 8px; height: 92vh; margin: 4vh auto !important;}
+    .top-control-row, .nav-group-left { height: 96px; flex-basis: 96px; }
+    .nav-group-left .button { height: 96px; min-height: 96px; }
+    .brigade-grid-right { height: 96px; grid-template-rows: repeat(2, 44px); }
+    .brigade-grid-right .button, .bottom-control-row .button { height: 44px; min-height: 44px; }
+    .bottom-control-row { height: 44px; flex-basis: 44px; }
     .day { font-size: 0.9rem; }
     #dateBar { font-size: 0.9rem; }
     .status-grid { grid-template-columns: repeat(2, 1fr); }
@@ -568,25 +664,33 @@ textarea.input-field {
     <div class="grafik_wrapper">
         <header class="header">
             <div id="dateBar" title="Kliknij by zmienić widok Miesiąc/Rok"></div>
-            <button class="button icon-button" id="btnSearch" type="button" title="Wyszukaj" aria-label="Wyszukaj dni"></button>
+            <!-- Górny przycisk wyszukiwania usunięty/zmieniony zgodnie z nowym układem na dole, zostaje tylko ukryty element wyszukiwarki -->
         </header>
 
         <div id="mainContainer" class="grafik monthView"></div>
 
         <!-- DOLNE STEROWANIE I NAWIGACJA (STREFA KCIUKA) -->
         <div class="bottom-controls">
-            <div class="nav-bar">
-                <button class="button nav-btn" id="btnPrev">&lt;</button>
-                <button class="button nav-btn" id="H" title="Dzisiaj"></button>
-                <button class="button nav-btn" id="T" title="Widok"></button>
-                <button class="button nav-btn" id="btnNext">&gt;</button>
+            <!-- Pierwszy rząd: po lewej < i > obok siebie (dwa razy większe), po prawej siatka a, b, c, d (a nad c, b nad d) -->
+            <div class="top-control-row">
+                <div class="nav-group-left">
+                    <button class="button nav-btn" id="btnPrev">&lt;</button>
+                    <button class="button nav-btn" id="btnNext">&gt;</button>
+                </div>
+
+                <div class="brigade-grid-right">
+                    <button class="button" id="A">A</button>
+                    <button class="button" id="B">B</button>
+                    <button class="button" id="C">C</button>
+                    <button class="button" id="D">D</button>
+                </div>
             </div>
 
-            <div class="brigadeBar">
-                <button class="button" id="A">A</button>
-                <button class="button" id="B">B</button>
-                <button class="button" id="C">C</button>
-                <button class="button" id="D">D</button>
+            <!-- Drugi rząd: Home (H), Search oraz Lista/Widok (T) obok siebie -->
+            <div class="bottom-control-row">
+                <button class="button nav-btn" id="H" title="Dzisiaj">Dzisiaj</button>
+                <button class="button" id="btnSearch" type="button" title="Wyszukaj">Szukaj</button>
+                <button class="button nav-btn" id="T" title="Widok">Widok</button>
             </div>
         </div>
     </div>
@@ -622,12 +726,17 @@ textarea.input-field {
                 <label>Status dnia:</label>
                 <div id="statusPicker" class="status-grid">
                     <button type="button" class="button status-btn active" data-value="normal">Praca</button>
-                    <button type="button" class="button status-btn" data-value="l4">L4</button>
-                    <button type="button" class="button status-btn" data-value="urlop">Urlop</button>
-                    <button type="button" class="button status-btn" data-value="uz">UŻ</button>
-                    <button type="button" class="button status-btn" data-value="sw">SW</button>
-                    <button type="button" class="button status-btn" data-value="nieobecnosc">Nieob.</button>
-                    <button type="button" class="button status-btn" data-value="nadgodziny">Nadgodziny</button>
+                    <button type="button" class="button status-btn status-btn-l4" data-value="l4">L4</button>
+                    <button type="button" class="button status-btn status-btn-u" data-value="urlop">Urlop</button>
+                    <button type="button" class="button status-btn status-btn-uz" data-value="uz">UŻ</button>
+                    <button type="button" class="button status-btn status-btn-sw" data-value="sw">SW</button>
+                    <button type="button" class="button status-btn status-btn-n" data-value="nieobecnosc">Nieob.</button>
+                    <button type="button" class="button status-btn status-btn-nad" data-value="nadgodziny">Nadgodziny</button>
+                    <button type="button" class="button status-btn status-btn-op188" data-value="opieka188">Opieka art. 188</button>
+                    <button type="button" class="button status-btn status-btn-ob" data-value="opiekaBzp">Opieka bezpłatna</button>
+                    <button type="button" class="button status-btn status-btn-ub" data-value="urlopbezplatny">Bezpłatny</button>
+                    <button type="button" class="button status-btn status-btn-us" data-value="stazowy">Urlop stażowy</button>
+                    <button type="button" class="button status-btn status-btn-k" data-value="krew">Krew</button>
                 </div>
             </div>
 
