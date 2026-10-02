@@ -38,6 +38,7 @@
       --color-op188: #b2bec3;
       --color-ob: #00cec9;
       --color-k: #d63031;
+      --color-us: #00bcd4;
 
     --bg-page: #f8fafc;
     --bg-datebar: #ffffff;
@@ -703,14 +704,26 @@ textarea.input-field {
         </div>
         <div id="searchResults" class="search-results" aria-live="polite"></div>
         <div class="search-bottom">
-            <div id="searchFilters" class="search-filters" role="tablist" aria-label="Kategorie dni">
-                <button class="button search-filter active" type="button" data-status="l4">L4 <span class="search-count" data-count-for="l4">0</span></button>
-                <button class="button search-filter" type="button" data-status="nieobecnosc">Nieob. <span class="search-count" data-count-for="nieobecnosc">0</span></button>
-                <button class="button search-filter" type="button" data-status="urlop">Urlop <span class="search-count" data-count-for="urlop">0</span></button>
-                <button class="button search-filter" type="button" data-status="uz">UŻ <span class="search-count" data-count-for="uz">0</span></button>
-                <button class="button search-filter" type="button" data-status="sw">SW <span class="search-count" data-count-for="sw">0</span></button>
-            </div>
-        </div>
+                    <!-- NOWA BELKA: Filtrowanie po roku -->
+                    <div id="searchYearFilters" class="search-filters" role="tablist" aria-label="Filtruj po roku">
+                        <!-- Przyciski lat wygenerują się tutaj dynamicznie z JS -->
+                    </div>
+
+                    <!-- ISTNIEJĄCA BELKA: Filtrowanie po kategoriach -->
+                    <div id="searchFilters" class="search-filters" role="tablist" aria-label="Kategorie dni">
+                        <button class="button search-filter active" type="button" data-status="l4">L4 <span class="search-count" data-count-for="l4">0</span></button>
+                        <button class="button search-filter" type="button" data-status="nieobecnosc">Nieob. <span class="search-count" data-count-for="nieobecnosc">0</span></button>
+                        <button class="button search-filter" type="button" data-status="urlop">Urlop <span class="search-count" data-count-for="urlop">0</span></button>
+                        <button class="button search-filter" type="button" data-status="uz">UŻ <span class="search-count" data-count-for="uz">0</span></button>
+                        <button class="button search-filter" type="button" data-status="sw">SW <span class="search-count" data-count-for="sw">0</span></button>
+                        <button class="button search-filter" type="button" data-status="nadgodziny">Nadg. <span class="search-count" data-count-for="nadgodziny">0</span></button>
+                        <button class="button search-filter" type="button" data-status="opieka188">Op.188 <span class="search-count" data-count-for="opieka188">0</span></button>
+                        <button class="button search-filter" type="button" data-status="opiekaBzp">Op.bezp. <span class="search-count" data-count-for="opiekaBzp">0</span></button>
+                        <button class="button search-filter" type="button" data-status="urlopbezplatny">Bezpł. <span class="search-count" data-count-for="urlopbezplatny">0</span></button>
+                        <button class="button search-filter" type="button" data-status="stazowy">Staż. <span class="search-count" data-count-for="stazowy">0</span></button>
+                        <button class="button search-filter" type="button" data-status="krew">Krew <span class="search-count" data-count-for="krew">0</span></button>
+                    </div>
+                </div>
     </div>
 
     <!-- SPA: Widok szczegółów/notatek dnia -->
