@@ -1,3 +1,141 @@
+/* 0. BACKUP DO SUPABASE (REST API + fetch) */
+class SupabaseRestSync {
+    static LS = { cfg: 'sb_config', session: 'sb_session' };
+    static TABLE = 'day_data';
+
+    // Zostawia sam adres (origin): obcina /rest/v1, /auth/v1, końcowe ukośniki itp.
+    static normalizeUrl(u) {
+        u = (u || '').trim();
+        if (!u) return '';
+        if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+        try { return new URL(u).origin; } catch { return u.replace(/\/+$/, ''); }
+    }
+
+    constructor() {
+        this.cfg = this.#load(SupabaseRestSync.LS.cfg) || { url: '', anonKey: '', email: '', auto: true };
+        this.cfg.url = SupabaseRestSync.normalizeUrl(this.cfg.url);
+        this.session = this.#load(SupabaseRestSync.LS.session);
+    }
+
+    #load(key) { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } }
+    #store(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+    isConfigured() { return !!(this.cfg.url && this.cfg.anonKey); }
+    isLoggedIn() { return !!this.session?.refresh_token; }
+
+    // Hasło NIE jest zapisywane – trzymamy tylko sesję (access + refresh token).
+    setConfig(partial) {
+        const next = { ...this.cfg, ...partial };
+        next.url = SupabaseRestSync.normalizeUrl(next.url);
+        next.anonKey = (next.anonKey || '').trim();
+        if (next.url !== this.cfg.url || next.anonKey !== this.cfg.anonKey) this.logout();
+        this.cfg = next;
+        this.#store(SupabaseRestSync.LS.cfg, next);
+    }
+
+    // Logowanie/odświeżanie: BEZ nagłówka Authorization (stary, wygasły token psuł logowanie).
+    async #authRequest(grant, body) {
+        const res = await fetch(`${this.cfg.url}/auth/v1/token?grant_type=${grant}`, {
+            method: 'POST',
+            headers: { apikey: this.cfg.anonKey, 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 404) throw new Error('Błąd 404 – sprawdź adres projektu: ma mieć postać https://xxxx.supabase.co (bez /rest/v1 i bez dalszej ścieżki).');
+        if (!res.ok) throw new Error(data.error_description || data.msg || data.message || `Błąd logowania (${res.status})`);
+        this.session = {
+            access_token: data.access_token,
+            refresh_token: data.refresh_token,
+            expires_at: Date.now() + (data.expires_in || 3600) * 1000
+        };
+        this.#store(SupabaseRestSync.LS.session, this.session);
+        return data.user;
+    }
+
+    login(email, password) { return this.#authRequest('password', { email, password }); }
+
+    logout() {
+        this.session = null;
+        localStorage.removeItem(SupabaseRestSync.LS.session);
+    }
+
+    // access_token wygasa po ~1h – odświeżamy go refresh_tokenem.
+    async #accessToken() {
+        if (!this.isLoggedIn()) throw new Error('Nie zalogowano – zaloguj się w ustawieniach.');
+        if (Date.now() > (this.session.expires_at || 0) - 60000) {
+            try {
+                await this.#authRequest('refresh_token', { refresh_token: this.session.refresh_token });
+            } catch (e) {
+                if (e instanceof TypeError) throw e; // brak sieci – sesję zachowujemy
+                this.logout();
+                throw new Error('Sesja wygasła – zaloguj się ponownie w ustawieniach.');
+            }
+        }
+        return this.session.access_token;
+    }
+
+    async #rest(path, options = {}) {
+        const call = async () => fetch(`${this.cfg.url}/rest/v1/${path}`, {
+            ...options,
+            headers: {
+                apikey: this.cfg.anonKey,
+                Authorization: `Bearer ${await this.#accessToken()}`,
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+        let res = await call();
+        if (res.status === 401 && this.isLoggedIn()) { this.session.expires_at = 0; res = await call(); }
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || `Błąd serwera (${res.status})`);
+        }
+        return res;
+    }
+
+    // id użytkownika (claim "sub") z tokenu JWT – wysyłamy je jawnie, nie polegamy na DEFAULT w bazie.
+    #userId() {
+        try {
+            const p = this.session.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+            return JSON.parse(atob(p)).sub;
+        } catch { return undefined; }
+    }
+
+    // Wysyła CAŁĄ lokalną bazę (upsert po user_id + date), paczkami po 500.
+    async exportAll(items) {
+        if (!items.length) return 0;
+        const uid = this.#userId();
+        const rows = items.map(i => ({
+            ...(uid ? { user_id: uid } : {}),
+            date: i.date,
+            status: i.status,
+            note: i.note || '',
+            hours: i.hours || 8,
+            updated_at: i.updated_at || new Date(0).toISOString()
+        }));
+        for (let i = 0; i < rows.length; i += 500) {
+            await this.#rest(`${SupabaseRestSync.TABLE}?on_conflict=user_id,date`, {
+                method: 'POST',
+                headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+                body: JSON.stringify(rows.slice(i, i + 500))
+            });
+        }
+        return rows.length;
+    }
+
+    // Pobiera całą bazę stronami (PostgREST domyślnie zwraca max 1000 wierszy).
+    async importAll() {
+        const out = [], size = 1000;
+        for (let offset = 0; ; offset += size) {
+            const res = await this.#rest(`${SupabaseRestSync.TABLE}?select=date,status,note,hours,updated_at&order=date.asc&limit=${size}&offset=${offset}`);
+            const page = await res.json();
+            out.push(...page);
+            if (page.length < size) break;
+        }
+        return out;
+    }
+}
+
 /* 1. ZARZĄDZANIE BAZĄ DANYCH INDEXED DB */
 class DBManager {
     constructor() {
@@ -36,6 +174,19 @@ class DBManager {
         const store = this.db.transaction(this.storeName, "readwrite").objectStore(this.storeName);
         return this.#promisify(store.put(data));
     }
+
+    // Dodaj tę metodę wewnątrz klasy DBManager:
+    async saveBatch(items) {
+        const tx = this.db.transaction(this.storeName, "readwrite");
+        const store = tx.objectStore(this.storeName);
+        for (const item of items) {
+            store.put(item);
+        }
+        return new Promise((resolve, reject) => {
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    }
 }
 
 /* 2. SILNIK LOGIKI ZMIAN I STATUSÓW */
@@ -45,7 +196,7 @@ class ShiftEngine {
         "A": new Date(2026, 1, 23),
         "B": new Date(2026, 1, 9),
         "C": new Date(2026, 1, 16),
-        "D": new Date(2026, 1, 30)
+        "D": new Date(2026, 2, 2)
     };
     #msPerDay = 86400000;
 
@@ -141,6 +292,10 @@ class App {
     constructor() {
         this.engine = new ShiftEngine();
         this.db = new DBManager();
+        this.cloud = new SupabaseRestSync();
+        this.backupTimer = null;
+        this.backupRunning = false;
+        this.backupAgain = false;
         this.todayDate = new Date();
         this.userData = {};
 
@@ -171,6 +326,9 @@ class App {
 
         this.ui.btnH.innerHTML = this.icons.home;
         this.ui.btnSearch.innerHTML = this.icons.search;
+        this.icons.gear = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`;
+        this.ui.set = Object.fromEntries(['btnSettings', 'settingsContainer', 'btnBackFromSettings', 'setUrl', 'setKey', 'setEmail', 'setPass', 'setAuto', 'btnSettingsLogin', 'btnSettingsLogout', 'btnBackupNow', 'btnRestore', 'settingsLogin', 'settingsStatus'].map(id => [id, document.getElementById(id)]));
+        this.ui.set.btnSettings.innerHTML = this.icons.gear;
 
         this.state = {
             year: new Date().getFullYear(),
@@ -180,7 +338,8 @@ class App {
             view: parseInt(localStorage.getItem("view")) || this.SIMPLE,
             selectedDateStr: null,
             returnToSearch: false,
-            searchStatus: 'l4'
+            searchStatus: 'l4',
+            searchYear: 'all'
         };
 
         if (!['A', 'B', 'C', 'D'].includes(this.state.brigade)) this.state.brigade = 'A';
@@ -188,6 +347,7 @@ class App {
         if (![this.MONTH_MODE, this.YEAR_MODE].includes(this.state.mode)) this.state.mode = this.MONTH_MODE;
 
         this.ui.btnT.innerHTML = (this.state.view === this.SIMPLE) ? this.icons.matrix : this.icons.calendar;
+        this.ui.btnT.classList.toggle('active', this.state.view === this.MATRIX);
         this.holidays = this.engine.getPolishHolidays(this.state.year);
     }
 
@@ -219,6 +379,7 @@ class App {
             };
         });
 
+
         this.ui.btnPrev.onclick = () => { this.#haptic('light'); this.#changeDate(-1); };
         this.ui.btnNext.onclick = () => { this.#haptic('light'); this.#changeDate(1); };
 
@@ -240,16 +401,6 @@ class App {
             this.ui.searchFilterButtons.forEach(btn => btn.classList.toggle('active', btn === filter));
             this.renderSearchResults();
         });
-        // ISTNIEJĄCY LISTENER KATEGORII
-        this.ui.searchFilters.addEventListener('click', (e) => {
-            const filter = e.target.closest('.search-filter');
-            if (!filter || !STATUS_CONFIG[filter.dataset.status]) return;
-            this.#haptic('light');
-            this.state.searchStatus = filter.dataset.status;
-            this.ui.searchFilterButtons.forEach(btn => btn.classList.toggle('active', btn === filter));
-            this.renderSearchResults();
-        });
-
         // DODANY LISTENER DLA FILTRÓW LAT
         this.ui.searchYearFilters.addEventListener('click', (e) => {
             const btn = e.target.closest('.search-filter');
@@ -317,6 +468,8 @@ class App {
             this.#haptic('medium');
             await this.saveDayDetails();
         };
+
+        this.#initSettingsEvents();
     }
 
     #buttonsRefresh() {
@@ -366,7 +519,7 @@ class App {
             this.state.mode = this.MONTH_MODE;
             change = true;
         }
-        if (change) this.refresh();
+        this.refresh();
     }
 
     saveSettingsToLocalStorage() {
@@ -376,6 +529,7 @@ class App {
     }
 
     refresh() {
+        this.todayDate = new Date();
         this.#buttonsRefresh();
         this.saveSettingsToLocalStorage();
 
@@ -752,7 +906,7 @@ class App {
                 const date = new Date(`${item.date}T12:00:00`);
                 const weekday = date.toLocaleDateString('pl-PL', { weekday: 'long' });
                 const displayDate = date.toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric' });
-                const hours = (status === 'sw' && Number.isFinite(Number(item.hours))) ? ` · ${Number(item.hours)}h` : '';
+                const hours = (['sw', 'nadgodziny'].includes(status) && Number.isFinite(Number(item.hours))) ? ` · ${Number(item.hours)}h` : '';
                 const note = item.note ? ' · notatka' : '';
                 return `<button type="button" class="search-card" data-date="${item.date}">
                     <span class="search-card-date"><strong>${displayDate}</strong><span>${weekday}${note}</span></span>
@@ -773,7 +927,8 @@ class App {
             date: dateStr,
             status: selectedStatus,
             note: this.ui.inputNote.value.trim(),
-            hours: parseInt(this.ui.inputHours.value) || 8
+            hours: parseInt(this.ui.inputHours.value) || 8,
+            updated_at: new Date().toISOString()
         };
 
         const validStatuses = ['normal', ...Object.keys(STATUS_CONFIG)];
@@ -794,9 +949,133 @@ class App {
             return;
         }
 
-        const returnToSearch = this.state.returnToSearch;
+        this.scheduleBackup();
         this.closeDayDetails();
-        if (!returnToSearch) this.refresh();
+        this.refresh();
+    }
+
+    /* ---- BACKUP DO SUPABASE ---- */
+    scheduleBackup(delay = 1500) {
+        const c = this.cloud;
+        if (!c.isConfigured() || !c.isLoggedIn() || c.cfg.auto === false) return;
+        localStorage.setItem('sb_dirty', '1');
+        this.#setSyncStatus('pending');
+        clearTimeout(this.backupTimer);
+        this.backupTimer = setTimeout(() => this.runBackup(), delay);
+    }
+
+    async runBackup() {
+        if (this.backupRunning) { this.backupAgain = true; return; }
+        this.backupRunning = true;
+        this.#setSyncStatus('syncing');
+        let n = 0;
+        try {
+            do {
+                this.backupAgain = false;
+                localStorage.removeItem('sb_dirty');
+                n = await this.cloud.exportAll(await this.db.getAll());
+            } while (this.backupAgain);
+            this.#setSyncStatus('ok', `Kopia zapisana (${n} dni) – ${new Date().toLocaleTimeString('pl-PL')}`);
+        } catch (err) {
+            localStorage.setItem('sb_dirty', '1'); // ponowimy po odzyskaniu sieci / przy starcie
+            this.#setSyncStatus('error', err instanceof TypeError ? 'Brak połączenia – kopia zostanie wysłana później.' : err.message);
+        } finally {
+            this.backupRunning = false;
+            this.#renderLoginState();
+        }
+    }
+
+    #setSyncStatus(state, msg) {
+        const s = this.ui.set;
+        if (state === 'idle') delete s.btnSettings.dataset.sync; else s.btnSettings.dataset.sync = state;
+        const defaults = { pending: 'Zmiany czekają na wysłanie…', syncing: 'Wysyłanie…' };
+        s.settingsStatus.textContent = msg || defaults[state] || '';
+    }
+
+    #renderLoginState() {
+        const s = this.ui.set, logged = this.cloud.isLoggedIn();
+        s.settingsLogin.textContent = logged ? `Zalogowano: ${this.cloud.cfg.email}` : 'Niezalogowano';
+        s.btnSettingsLogout.classList.toggle('display-none', !logged);
+        s.btnBackupNow.disabled = !logged;
+        s.btnRestore.disabled = !logged;
+    }
+
+    openSettings() {
+        const s = this.ui.set, c = this.cloud.cfg;
+        s.setUrl.value = c.url || '';
+        s.setKey.value = c.anonKey || '';
+        s.setEmail.value = c.email || '';
+        s.setPass.value = '';
+        s.setAuto.checked = c.auto !== false;
+        this.#renderLoginState();
+        s.settingsContainer.classList.remove('hidden');
+        s.settingsContainer.setAttribute('aria-hidden', 'false');
+    }
+
+    closeSettings() {
+        this.ui.set.settingsContainer.classList.add('hidden');
+        this.ui.set.settingsContainer.setAttribute('aria-hidden', 'true');
+    }
+
+    async #settingsLogin() {
+        const s = this.ui.set;
+        const url = s.setUrl.value.trim(), key = s.setKey.value.trim(), email = s.setEmail.value.trim(), pass = s.setPass.value;
+        if (!url || !key || !email || !pass) { this.#setSyncStatus('error', 'Uzupełnij wszystkie pola.'); return; }
+        s.btnSettingsLogin.disabled = true;
+        try {
+            this.cloud.setConfig({ url, anonKey: key, email, auto: s.setAuto.checked });
+            s.setUrl.value = this.cloud.cfg.url;
+            await this.cloud.login(email, pass);
+            s.setPass.value = '';
+            this.#setSyncStatus('ok', 'Zalogowano pomyślnie.');
+            if (localStorage.getItem('sb_dirty') === '1') this.scheduleBackup(500);
+        } catch (err) {
+            this.#setSyncStatus('error', err instanceof TypeError ? 'Brak połączenia z serwerem – sprawdź adres URL i internet.' : err.message);
+        } finally {
+            s.btnSettingsLogin.disabled = false;
+            this.#renderLoginState();
+        }
+    }
+
+    async #restoreFromCloud() {
+        if (!confirm('Pobrać dane z chmury? Nowsze wpisy z chmury zastąpią lokalne.')) return;
+        this.#setSyncStatus('syncing', 'Pobieranie…');
+        const ts = v => Date.parse(v) || 0;
+        try {
+            const cloudItems = await this.cloud.importAll();
+            const toSave = cloudItems.filter(c => {
+                const l = this.userData[c.date];
+                return !l || ts(c.updated_at) > ts(l.updated_at);
+            });
+            if (toSave.length) {
+                await this.db.saveBatch(toSave);
+                toSave.forEach(i => { this.userData[i.date] = i; });
+                this.refresh();
+            }
+            this.#setSyncStatus('ok', `Pobrano ${cloudItems.length} dni, zaktualizowano ${toSave.length}.`);
+        } catch (err) {
+            this.#setSyncStatus('error', err instanceof TypeError ? 'Brak połączenia z serwerem.' : err.message);
+        }
+    }
+
+    #initSettingsEvents() {
+        const s = this.ui.set;
+        s.btnSettings.onclick = () => { this.#haptic('light'); this.openSettings(); };
+        s.btnBackFromSettings.onclick = () => { this.#haptic('light'); this.closeSettings(); };
+        s.setAuto.onchange = () => this.cloud.setConfig({ auto: s.setAuto.checked });
+        s.btnSettingsLogin.onclick = () => this.#settingsLogin();
+        s.btnSettingsLogout.onclick = () => {
+            this.cloud.logout();
+            this.#setSyncStatus('idle', 'Wylogowano.');
+            this.#renderLoginState();
+        };
+        s.btnBackupNow.onclick = () => this.runBackup();
+        s.btnRestore.onclick = () => this.#restoreFromCloud();
+        window.addEventListener('online', () => {
+            if (localStorage.getItem('sb_dirty') === '1') this.scheduleBackup(500);
+        });
+        this.#renderLoginState();
+        if (localStorage.getItem('sb_dirty') === '1') this.scheduleBackup(1000);
     }
 }
 
