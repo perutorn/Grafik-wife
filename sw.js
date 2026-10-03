@@ -1,4 +1,4 @@
-const CACHE_NAME = 'grafik-wife-v5';
+const CACHE_NAME = 'grafik-wife-v6';
 // Ponieważ wszystko jest w index.html, potrzebujesz tylko jego i manifestu
 const ASSETS = [
     './',
