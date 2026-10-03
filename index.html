@@ -657,6 +657,21 @@ textarea.input-field {
     #dateBar { font-size: 0.9rem; }
     .status-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* USTAWIENIA / BACKUP */
+.matrix-date { position: relative; }
+#btnSettings { position: relative; }
+#btnSettings::after { content: ''; position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: transparent; }
+#btnSettings[data-sync="ok"]::after { background: #2ecc71; }
+#btnSettings[data-sync="pending"]::after, #btnSettings[data-sync="syncing"]::after { background: #f39c12; }
+#btnSettings[data-sync="error"]::after { background: #e74c3c; }
+#settingsContainer { position: fixed; inset: 0; z-index: 1100; background: var(--bg-page); display: flex; flex-direction: column; padding: 2vh 4vw; transform: translateX(0); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+#settingsContainer.hidden { transform: translateX(100%); pointer-events: none; }
+.settings-body { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 12px; padding-bottom: 24px; }
+.settings-body .button-primary { margin: 0; height: 48px; font-size: 1rem; }
+.settings-note { font-size: 0.8rem; opacity: 0.8; min-height: 1.1em; }
+.switch-row { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; font-weight: 700; }
+.switch-row input { width: 22px; height: 22px; }
 </style>
 
 <script src="script.js"></script>
@@ -665,7 +680,7 @@ textarea.input-field {
     <div class="grafik_wrapper">
         <header class="header">
             <div id="dateBar" title="Kliknij by zmienić widok Miesiąc/Rok"></div>
-            <!-- Górny przycisk wyszukiwania usunięty/zmieniony zgodnie z nowym układem na dole, zostaje tylko ukryty element wyszukiwarki -->
+            <button class="button icon-button" id="btnSettings" type="button" title="Ustawienia" aria-label="Ustawienia"></button>
         </header>
 
         <div id="mainContainer" class="grafik monthView"></div>
@@ -765,6 +780,39 @@ textarea.input-field {
             </div>
 
             <button class="button button-primary" id="btnSaveDay">Zapisz</button>
+        </div>
+    </div>
+    <!-- SPA: Ustawienia / backup Supabase -->
+    <div id="settingsContainer" class="hidden" aria-hidden="true">
+        <div class="search-header">
+            <button class="button" id="btnBackFromSettings" type="button">← Wróć</button>
+            <h2>Ustawienia</h2>
+        </div>
+        <div class="settings-body">
+            <div class="form-group">
+                <label for="setUrl">Supabase – adres projektu (URL)</label>
+                <input type="url" id="setUrl" class="input-field" placeholder="https://xxxx.supabase.co" autocomplete="off" autocapitalize="off" spellcheck="false">
+            </div>
+            <div class="form-group">
+                <label for="setKey">Klucz anon / publishable</label>
+                <input type="text" id="setKey" class="input-field" autocomplete="off" autocapitalize="off" spellcheck="false">
+            </div>
+            <div class="form-group">
+                <label for="setEmail">E-mail</label>
+                <input type="email" id="setEmail" class="input-field" autocomplete="username" autocapitalize="off">
+            </div>
+            <div class="form-group">
+                <label for="setPass">Hasło (nie jest zapisywane)</label>
+                <input type="password" id="setPass" class="input-field" autocomplete="current-password">
+            </div>
+            <button class="button button-primary" id="btnSettingsLogin" type="button">Zapisz i zaloguj</button>
+            <div id="settingsLogin" class="settings-note"></div>
+            <label class="switch-row"><input type="checkbox" id="setAuto" checked> Automatyczny backup po każdej zmianie</label>
+            <button class="button" id="btnBackupNow" type="button">Wyślij kopię teraz</button>
+            <button class="button" id="btnRestore" type="button">Pobierz z chmury</button>
+            <button class="button display-none" id="btnSettingsLogout" type="button">Wyloguj</button>
+            <div id="settingsStatus" class="settings-note" aria-live="polite"></div>
+            <p class="settings-note">Przed pierwszym użyciem wykonaj skrypt supabase_setup.sql w Supabase (SQL Editor) i dodaj użytkownika w Authentication → Users.</p>
         </div>
     </div>
 </body>
